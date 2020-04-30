@@ -14,13 +14,21 @@
 
 	org ROMSTART
 
+section .text
+
 ; ROM BIOS Header
 ; ---------------------------------------------------------------------------
-	db 55h
-	db 0AAh
-	db ROMBLOCKS
+	DB 55h
+	DB 0AAh
+	DB ROMBLOCKS
 
 	jmp start
+
+	DB 0,'I/O-IF ROM #0',0
+
+%include ".\source\routines.asm"
+%include ".\source\detect.asm"
+%include ".\source\include\messages.inc"
 
 ; Initialization Routine
 ; ---------------------------------------------------------------------------
@@ -32,17 +40,22 @@ start:
 	push si
 	push ds
 
+	xor ax,ax
+	mov ds,ax
+	mov ss,ax
+	mov es,ax
+
 	mov si,sProgram
-	call print
+	call directwrite
 	mov si,sCopyright
 	call print
-	mov si,sPressDELKey
-	call print
 
-	call autodetectPM
-	call autodetectPS
-	call autodetectSM
-	call autodetectSS
+	call processSetup
+
+	call autodetectDevices
+
+	mov si,sCRLF
+	call print
 
 	pop ds
 	pop si
@@ -53,121 +66,62 @@ start:
 
 	retf
 
-; Autodetection of IDE Primary Master device.
+; I/OIF ROM BIOS Setup Program trigger.
 ; ---------------------------------------------------------------------------
-autodetectPM:
+processSetup:
+	mov si,sPressDELKey
+	call print
+
+	; TODO : Add code to process keypresses and enter the Setup Program.
+
+	mov cx,100
+	call delay1sec
+
+	ret
+
+; Autodetection of IDE Devices.
+; ---------------------------------------------------------------------------
+autodetectDevices:
 	mov si,sAutodetectIDE
 	call print
 	mov si,sAutodetectPM
 	call print
-	mov si,sAutodetectNone
-	call print
 
-	ret
+	mov ax,PRIMARY_IDE_INTERFACE
+	mov bx,MASTER_DEVICE
+	call autodetectDevice
 
-; Autodetection of IDE Primary Slave device.
-; ---------------------------------------------------------------------------
-autodetectPS:
 	mov si,sAutodetectIDE
 	call print
 	mov si,sAutodetectPS
 	call print
-	mov si,sAutodetectNone
-	call print
 
-	ret
+	mov ax,PRIMARY_IDE_INTERFACE
+	mov bx,SLAVE_DEVICE
+	call autodetectDevice
 
-; Autodetection of IDE Secondary Master device.
-; ---------------------------------------------------------------------------
-autodetectSM:
 	mov si,sAutodetectIDE
 	call print
 	mov si,sAutodetectSM
 	call print
-	mov si,sAutodetectNone
-	call print
 
-	ret
+	mov ax,SECONDARY_IDE_INTERFACE
+	mov bx,MASTER_DEVICE
+	call autodetectDevice
 
-; Autodetection of IDE Secondary Slave device.
-; ---------------------------------------------------------------------------
-autodetectSS:
 	mov si,sAutodetectIDE
 	call print
 	mov si,sAutodetectSS
 	call print
-	mov si,sAutodetectNone
-	call print
+
+	mov ax,SECONDARY_IDE_INTERFACE
+	mov bx,SLAVE_DEVICE
+	call autodetectDevice
 
 	ret
 
-; Prints an ASCIIZ string to the screen via function 0Eh (teletype) on INT10.
-; Input:
-;   CS:SI - pointer to the string
-; Output:
-;   none
-; ---------------------------------------------------------------------------
-print:
-	pushf
-	push ax
-	push bx
-	push si
-	push ds
-	push cs
-	pop ds
-	
-	cld
+TIMES (ROMSIZE-($-$$)-ROMSTART) DB 00h
 
-.nextchar:
-	lodsb
-	or al,al
-	jz .exit
-	
-	mov ah,0Eh
-	mov bx,0007h
-	int 10h
-	
-	jmp .nextchar
+section .bss
 
-.exit:
-	pop ds
-	pop si
-	pop bx
-	pop ax
-	popf
-
-	ret
-
-; Delay for multiplies of approximately 15 microseconds.
-; Input:
-;   CX - time to delay (in 15us units)
-; Output:
-;   none
-; ---------------------------------------------------------------------------
-Wait1s:
-	pusha
-	push ds
-
-	mov ax,0
-	mov ds,ax
-
-	mov cx,18
-	mov bx,[46Ch]
-
-WaitForAnotherChange:
-
-NoChange:
-	mov ax,[46Ch]
-	cmp ax,bx
-	je NoChange
-	mov bx,ax
-	loop WaitForAnotherChange
-
-	pop ds
-	popa
-
-	ret
-
-%include ".\source\include\messages.inc"
-
-TIMES (ROMSIZE-($-$$)-ROMSTART) db 00h
+BUFFER				RESB 256
