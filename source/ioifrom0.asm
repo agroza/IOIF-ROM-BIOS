@@ -26,6 +26,7 @@ section .text
 
 	DB 0,'I/O-IF ROM #0',0
 
+%include ".\source\debug.asm"
 %include ".\source\routines.asm"
 %include ".\source\detect.asm"
 %include ".\source\include\messages.inc"
@@ -45,17 +46,29 @@ start:
 	mov ss,ax
 	mov es,ax
 
+	mov ah,VIDEOHIGHLIGHT
 	mov si,sProgram
-	call directwrite
+	call directWrite
+	mov ah,VIDEONORMAL
 	mov si,sCopyright
-	call print
+	call directWrite
 
+	call check8bitCPU
+	or al,al
+	jnz .continue
+
+	mov si,sBIOSDisabled
+	call directWrite
+
+	jmp .exit
+
+.continue:
 	call processSetup
 
 	call autodetectDevices
 
-	mov si,sCRLF
-	call print
+.exit:
+	call CRLF
 
 	pop ds
 	pop si
@@ -70,7 +83,7 @@ start:
 ; ---------------------------------------------------------------------------
 processSetup:
 	mov si,sPressDELKey
-	call print
+	call directWrite
 
 	; TODO : Add code to process keypresses and enter the Setup Program.
 
@@ -82,37 +95,41 @@ processSetup:
 ; Autodetection of IDE Devices.
 ; ---------------------------------------------------------------------------
 autodetectDevices:
+	mov ah,VIDEONORMAL
 	mov si,sAutodetectIDE
-	call print
+	call directWrite
 	mov si,sAutodetectPM
-	call print
+	call directWrite
 
 	mov ax,PRIMARY_IDE_INTERFACE
 	mov bx,MASTER_DEVICE
 	call autodetectDevice
 
+	mov ah,VIDEONORMAL
 	mov si,sAutodetectIDE
-	call print
+	call directWrite
 	mov si,sAutodetectPS
-	call print
+	call directWrite
 
 	mov ax,PRIMARY_IDE_INTERFACE
 	mov bx,SLAVE_DEVICE
 	call autodetectDevice
 
+	mov ah,VIDEONORMAL
 	mov si,sAutodetectIDE
-	call print
+	call directWrite
 	mov si,sAutodetectSM
-	call print
+	call directWrite
 
 	mov ax,SECONDARY_IDE_INTERFACE
 	mov bx,MASTER_DEVICE
 	call autodetectDevice
 
+	mov ah,VIDEONORMAL
 	mov si,sAutodetectIDE
-	call print
+	call directWrite
 	mov si,sAutodetectSS
-	call print
+	call directWrite
 
 	mov ax,SECONDARY_IDE_INTERFACE
 	mov bx,SLAVE_DEVICE
@@ -121,7 +138,3 @@ autodetectDevices:
 	ret
 
 TIMES (ROMSIZE-($-$$)-ROMSTART) DB 00h
-
-section .bss
-
-BUFFER				RESB 256
