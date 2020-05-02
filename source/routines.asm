@@ -21,32 +21,32 @@ CRLF:
 	push cx
 	push dx
 
-	mov ah,03h					; get cursor position
-	xor bh,bh					; video page 0
+	mov ah,03h			; get cursor position
+	xor bh,bh			; video page 0
 	int 10h
 
-	xor dl,dl					; first column
+	xor dl,dl			; first column
 
-	cmp dh,24					; last row?
+	cmp dh,24			; last row?
 	jz .scrollUp
-	inc dh						; next row
-	mov ah,02h					; set cursor position
+	inc dh				; next row
+	mov ah,02h			; set cursor position
 	int 10h
 	jmp .exit
 
 .scrollUp:
-	mov ah,02h					; set cursor position
+	mov ah,02h			; set cursor position
 	int 10h
 
-	mov ah,08h					; read character and attribute at cursor position
+	mov ah,08h			; read character and attribute at cursor position
 	int 10h
-	mov bh,ah					; attribute to pass to function 06h
+	mov bh,ah			; attribute to pass to function 06h
 
-	mov ah,06h					; scroll up window
-	mov al,1					; by one line
-	xor cx,cx					; top-left = 0,0
-	mov dh,24					; last row
-	mov dl,79					; last column
+	mov ah,06h			; scroll up window
+	mov al,1			; by one line
+	xor cx,cx			; top-left = 0,0
+	mov dh,24			; last row
+	mov dl,79			; last column
 	int 10h
 
 .exit:
@@ -78,21 +78,21 @@ directWriteChar:
 	push es
 
 	mov ax,VIDEO_RAM_SEGMENT
-	mov es,ax					; ES = 0B800h
+	mov es,ax			; ES = 0B800h
 
 	xor ah,ah
-	mov al,[bp-5]				; stored dh = row
+	mov al,[bp-5]			; stored dh = row
 	xor bh,bh
 	mov bl,VIDEO_COLUMN_COUNT
 	mul bx
-	shl ax,1					; multiply by 2
+	shl ax,1			; multiply by 2
 	xor dh,dh
-	mov dl,[bp-6]				; stored dl = column
-	shl dx,1					; multiply by 2
+	mov dl,[bp-6]			; stored dl = column
+	shl dx,1			; multiply by 2
 	add ax,dx
 
-	mov di,ax					; ES:DI = (dh * 80 + dl) * 2
-	mov ax,[bp-2]				; (attribute|character) from stack (original ax)
+	mov di,ax			; ES:DI = (dh * 80 + dl) * 2
+	mov ax,[bp-2]			; (attribute|character) from stack (original ax)
 
 	cld
 
@@ -132,76 +132,76 @@ directWrite:
 	push es
 
 	mov ax,VIDEO_RAM_SEGMENT
-	mov es,ax					; ES = 0B800h
+	mov es,ax			; ES = 0B800h
 
-	mov ah,03h					; get cursor position
-	xor bh,bh					; video page 0
+	mov ah,03h			; get cursor position
+	xor bh,bh			; video page 0
 	int 10h
 
 	cld
 
 .computePosition:
-	mov cx,dx					; save row and column
+	mov cx,dx			; save row and column
 
 	xor ah,ah
-	mov al,ch					; ch = row
+	mov al,ch			; ch = row
 	xor bh,bh
 	mov bl,VIDEO_COLUMN_COUNT
 	mul bx
-	shl ax,1					; multiply by 2
+	shl ax,1			; multiply by 2
 	xor dh,dh
-	mov dl,cl					; cl = column
-	shl dx,1					; multiply by 2
+	mov dl,cl			; cl = column
+	shl dx,1			; multiply by 2
 	add ax,dx
 
-	mov dx,cx					; restore row and column
+	mov dx,cx			; restore row and column
 
-	mov di,ax					; ES:DI = (ch * 80 + cl) * 2
-	mov ah,[bp-3]				; attribute from stack (original ah)
+	mov di,ax			; ES:DI = (ch * 80 + cl) * 2
+	mov ah,[bp-3]			; attribute from stack (original ah)
 
 .nextByte:
-	lodsb						; load byte from DS:SI
+	lodsb				; load byte from DS:SI
 
-	or al,al					; end of string?
+	or al,al			; end of string?
 	jz .exit
-	cmp al,13					; carriage return?
+	cmp al,13			; carriage return?
 	jz .CR
-	cmp al,10					; line feed?
+	cmp al,10			; line feed?
 	jz .LF
 
-	stosw						; store word (attribute|character) in ES:DI
+	stosw				; store word (attribute|character) in ES:DI
 
-	inc dl						; next column
+	inc dl				; next column
 
 	jmp .nextByte
 
 .CR:
-	mov dl,0					; first column
+	mov dl,0			; first column
 	jmp .setCursor
 
 .LF:
-	cmp dh,24					; last row?
+	cmp dh,24			; last row?
 	jz .scrollUp
-	inc dh						; next row
+	inc dh				; next row
 
 	jmp .setCursor
 
 .scrollUp:
-	mov ah,02h					; set cursor position
-	xor bh,bh					; video page 0
+	mov ah,02h			; set cursor position
+	xor bh,bh			; video page 0
 	int 10h
 
 push dx
 
-	mov ah,08h					; read character and attribute at cursor position
+	mov ah,08h			; read character and attribute at cursor position
 	int 10h
-	mov bh,ah					; attribute to pass to function 06h
+	mov bh,ah			; attribute to pass to function 06h
 
-	mov ah,06h					; scroll up window
-	mov al,1					; by one line
-	xor cx,cx					; top-left = 0,0
-	mov dh,24					; last row
-	mov dl,79					; last column
+	mov ah,06h			; scroll up window
+	mov al,1			; by one line
+	xor cx,cx			; top-left = 0,0
+	mov dh,24			; last row
+	mov dl,79			; last column
 	int 10h
 
 pop dx
@@ -209,15 +209,15 @@ pop dx
 	jmp .nextByte ;.computePosition
 
 .setCursor:
-	mov ah,02h					; set cursor position
-	xor bh,bh					; video page 0
+	mov ah,02h			; set cursor position
+	xor bh,bh			; video page 0
 	int 10h
 
 	jmp .computePosition
 
 .exit:
-	mov ah,02h					; set cursor position
-	xor bh,bh					; video page 0
+	mov ah,02h			; set cursor position
+	xor bh,bh			; video page 0
 	int 10h
 
     pop es

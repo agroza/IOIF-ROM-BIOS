@@ -89,12 +89,13 @@ processSetup:
 	mov cx,100
 	call delay1sec
 
-	mov ah,01h					; read the state of the keyboard buffer
+	mov ah,01h			; read the state of the keyboard buffer
 	int 16h
 	jz .exit
 
-	mov ah,00h					; read key press
+	mov ah,00h			; read key press
 	int 16h
+
 	cmp ax,KBD_DEL
 	jne .exit
 
