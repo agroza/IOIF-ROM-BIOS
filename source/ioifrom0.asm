@@ -28,6 +28,7 @@ section .text
 
 %include ".\source\debug.asm"
 %include ".\source\routines.asm"
+%include ".\source\setup.asm"
 %include ".\source\detect.asm"
 %include ".\source\include\messages.inc"
 
@@ -46,9 +47,6 @@ start:
 	mov ss,ax
 	mov es,ax
 
-	mov ah,VIDEOHIGHLIGHT
-	mov si,sProgram
-	call directWrite
 	mov ah,VIDEONORMAL
 	mov si,sCopyright
 	call directWrite
@@ -79,16 +77,27 @@ start:
 
 	retf
 
-; I/OIF ROM BIOS Setup Program trigger.
+; I/OIF ROM BIOS SETUP Program trigger.
 ; ---------------------------------------------------------------------------
 processSetup:
 	mov si,sPressDELKey
 	call directWrite
 
-	; TODO : Add code to process keypresses and enter the Setup Program.
-
 	mov cx,100
 	call delay1sec
+
+	mov ah,01h					; read the state of the keyboard buffer
+	int 16h
+	jz .exit
+
+	mov ah,00h					; read key press
+	int 16h
+	cmp ax,5300h				; DEL?
+	jne .exit
+
+	call enterSetup
+
+.exit:
 
 	ret
 
