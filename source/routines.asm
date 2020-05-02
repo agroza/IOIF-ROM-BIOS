@@ -44,7 +44,7 @@ CRLF:
 
 	mov ah,06h			; scroll up window
 	mov al,1			; by one line
-	xor cx,cx			; top-left = 0,0
+	xor cx,cx			; row,column = 0,0
 	mov dh,24			; last row
 	mov dl,79			; last column
 	int 10h
@@ -73,6 +73,7 @@ directWriteChar:
 
 	push ax
 	push bx
+	push cx
 	push dx
 	push di
 	push es
@@ -81,13 +82,13 @@ directWriteChar:
 	mov es,ax			; ES = 0B800h
 
 	xor ah,ah
-	mov al,[bp-5]			; stored dh = row
+	mov al,[bp-7]			; stored dh = row
 	xor bh,bh
 	mov bl,VIDEO_COLUMN_COUNT
 	mul bx
 	shl ax,1			; multiply by 2
 	xor dh,dh
-	mov dl,[bp-6]			; stored dl = column
+	mov dl,[bp-8]			; stored dl = column
 	shl dx,1			; multiply by 2
 	add ax,dx
 
@@ -101,6 +102,7 @@ directWriteChar:
 	pop es
 	pop di
 	pop dx
+	pop cx
 	pop bx
 	pop ax
 
@@ -141,7 +143,7 @@ directWrite:
 	cld
 
 .computePosition:
-	mov cx,dx			; save row and column
+	mov cx,dx			; save row,column
 
 	xor ah,ah
 	mov al,ch			; ch = row
@@ -154,7 +156,7 @@ directWrite:
 	shl dx,1			; multiply by 2
 	add ax,dx
 
-	mov dx,cx			; restore row and column
+	mov dx,cx			; restore row,column
 
 	mov di,ax			; ES:DI = (ch * 80 + cl) * 2
 	mov ah,[bp-3]			; attribute from stack (original ah)
@@ -199,7 +201,7 @@ push dx
 
 	mov ah,06h			; scroll up window
 	mov al,1			; by one line
-	xor cx,cx			; top-left = 0,0
+	xor cx,cx			; row,column = 0,0
 	mov dh,24			; last row
 	mov dl,79			; last column
 	int 10h
@@ -220,7 +222,7 @@ pop dx
 	xor bh,bh			; video page 0
 	int 10h
 
-    pop es
+	pop es
 	pop ds
 	pop di
 	pop si
