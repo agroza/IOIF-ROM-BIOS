@@ -47,6 +47,9 @@ start:
 	mov ss,ax
 	mov es,ax
 
+	mov ah,VIDEOHIGHLIGHT
+	mov si,sProgram
+	call directWrite
 	mov ah,VIDEONORMAL
 	mov si,sCopyright
 	call directWrite
@@ -92,7 +95,7 @@ processSetup:
 
 	mov ah,00h					; read key press
 	int 16h
-	cmp ax,5300h				; DEL?
+	cmp ax,KBD_DEL
 	jne .exit
 
 	call enterSetup
