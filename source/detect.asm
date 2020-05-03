@@ -128,68 +128,7 @@ autodetectDevice:
 	jmp .detectNone			; time-out
 
 .tempContinue:
-jmp .fillbuff
 
-	cli
-
-	mov dx,[bp-4]			; IDE Interface Base Address
-	add dx,SELECT_DRIVE_AND_HEAD_REGISTER
-	mov al,[bp-8]			; Master/Slave
-	out dx,al
-
-	mov dx,[bp-4]			; IDE Interface Base Address
-	add dx,COMMAND_REGISTER
-	mov al,ATA_IDENTIFY_DEVICE_COMMAND
-	out dx,al
-
-	mov dx,[bp-4]			; IDE Interface Base Address
-	add dx,STATUS_REGISTER
-.3:
-	in al,dx
-	and al,STATUS_REGISTER_DRQ
-	je .3
-
-	mov dx,[bp-4]			; IDE Interface Base Address
-	add dx,DATA_REGISTER
-;	lea dx,[BUFFER] ;points DI to the buffer we're using
-;	mov cx,256
-
-;	cld
-
-;	rep insw
-
-.fillbuff:
-
-;DS:si
-;ES:di
-
-	;mov ax,cs
-	;mov ds,ax
-
-; TODO CEVA E AICI
-
-	xor ax,ax
-	mov es,ax
-
-    mov  si, prompt
-    mov  di, BUFFER
-
-    mov  cx,10
-
-.copyLoop:
-    mov  al, [si]
-    mov  [di], al
-    inc  si
-    inc  di
-    loop .copyLoop
-.Done:
-    mov  BYTE [di], 0
-
-
-	mov si,BUFFER
-	call print
-
-	jmp .exit
 
 .detectNone:
 	mov ah,VIDEOHIGHLIGHT
@@ -215,8 +154,6 @@ jmp .fillbuff
 	pop bp
 
 	ret
-
-	prompt		db	"Enter your text string: ",0
 
 section .bss
 	BUFFER		RESB	256
