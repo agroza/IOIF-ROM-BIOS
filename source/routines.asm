@@ -193,7 +193,9 @@ directWrite:
 	xor bh,bh			; video page 0
 	int 10h
 
-push dx
+	; TODO : Optimize this part.
+
+	push dx
 
 	mov ah,08h			; read character and attribute at cursor position
 	int 10h
@@ -206,7 +208,7 @@ push dx
 	mov dl,79			; last column
 	int 10h
 
-pop dx
+	pop dx
 
 	jmp .nextByte ;.computePosition
 
@@ -233,5 +235,43 @@ pop dx
 
 	mov sp,bp
 	pop bp
+
+	ret
+
+; Delay for a number of seconds using the System Timer.
+; Input:
+;   CX - number of seconds
+; Output:
+;   none
+; ---------------------------------------------------------------------------
+delay:
+	pushf
+	push ax
+	push bx
+	push cx
+	push dx
+	push ds
+
+	xor ax,ax
+	mov ds,ax
+
+	mov ax,18			; 18 Hz
+	mul cx				; how many seconds
+	xchg ax,cx			; result in cx
+	mov bx,[46Ch]			; BIOS timer count is updated at 18.2 Hz
+
+.nextUpdate:
+	mov ax,[46Ch]			; start polling
+	cmp ax,bx			; same time counter?
+	je .nextUpdate
+	mov bx,ax			; store the new compare value
+	loop .nextUpdate
+
+	pop ds
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+	popf
 
 	ret
