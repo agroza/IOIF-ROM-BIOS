@@ -46,7 +46,7 @@ check8bitCPU:
 ; Input:
 ;   AX - IDE Interface Base Address
 ;   BX - IDE Interface Controll Address
-;   CX - Master/Slave
+;   CL - Master/Slave
 ; Output
 ;   none
 ; ---------------------------------------------------------------------------
@@ -62,14 +62,10 @@ autodetectDevice:
 	push si
 	push di
 	push ds
-	push cs
-	pop ds
 	push es
 
-; TODO CEVA E AICI
-
 	xor ax,ax
-	mov ds,ax
+	mov ds,ax			; DS = 0000h
 
 .wait400ns:
 	mov dx,[bp-6]			; IDE Interface Control Address
@@ -96,14 +92,12 @@ autodetectDevice:
 	je .checkDRDY
 
 	mov ax,[46Ch]			; BIOS timer count is updated at 18.2 Hz
-	cmp ax,bx			; same time counter?
+	cmp ax,bx			; same timer count?
 	je .waitBSY
 	mov bx,ax			; store the new compare value
-	loop .waitBSY			; continue for 2 seconds
+	loop .waitBSY			; continue until time-out
 
-	; TODO : This code is faulty.
-
-	jmp .detectNone
+	jmp .detectNone			; time-out
 
 .checkDRDY:
 	mov dx,[bp-4]			; IDE Interface Base Address
@@ -117,18 +111,78 @@ autodetectDevice:
 .waitDRDY:
 	in al,dx			; read
 	and al,STATUS_REGISTER_DRDY
-	jne .tempContinue
+	jne .sendIdentifyCommand
 
 	mov ax,[46Ch]			; BIOS timer count is updated at 18.2 Hz
-	cmp ax,bx			; same time counter?
+	cmp ax,bx			; same timer count?
 	je .waitDRDY
 	mov bx,ax			; store the new compare value
-	loop .waitDRDY			; continue for 2 seconds
+	loop .waitDRDY			; continue until time-out
 
 	jmp .detectNone			; time-out
 
-.tempContinue:
+.sendIdentifyCommand:
+	cli
 
+	mov dx,[bp-4]			; IDE Interface Base Address
+	add dx,SELECT_DRIVE_AND_HEAD_REGISTER
+	mov al,[bp-8]			; Master/Slave
+	out dx,al
+
+	mov dx,[bp-4]			; IDE Interface Base Address
+	add dx,COMMAND_REGISTER
+	mov al,ATA_IDENTIFY_DEVICE_COMMAND
+	out dx,al
+
+.waitDRQ:
+	mov dx,[bp-4]			; IDE Interface Base Address
+	add dx,STATUS_REGISTER
+
+.checkDRQ:
+	in al,dx
+	and al,STATUS_REGISTER_DRQ
+	je .checkDRQ
+
+	mov dx,[bp-4]			; IDE Interface Base Address
+	add dx,DATA_REGISTER
+
+	mov ax,cs
+	mov es,ax			; ES:DI = CS:BUFFER
+
+	mov di,BUFFER
+	mov cx,256
+
+	cld
+
+	rep insw			; fill the buffer with device data
+
+	sti
+
+	mov ax,cs
+	mov ds,ax			; DS:SI = CS:BUFFER
+
+	; TODO : Refactor this code and continue the implementation.
+
+.printATAInformation:
+	mov si,BUFFER
+	add si,26
+	mov cx,20
+
+	mov bx,0007h
+
+.printModel:
+	lodsw
+	mov dx,ax
+	xchg dh,dl
+
+	mov ah,0Eh			; brutal teletype printing
+	mov al,dl
+	int 10h
+	mov al,dh
+	int 10h
+	loop .printModel
+
+	jmp .exit
 
 .detectNone:
 	mov ah,VIDEOHIGHLIGHT
@@ -137,8 +191,6 @@ autodetectDevice:
 
 .exit:
 	call CRLF
-
-	sti
 
 	pop es
 	pop ds

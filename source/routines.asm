@@ -16,6 +16,7 @@ section .text
 ;   none
 ; ---------------------------------------------------------------------------
 CRLF:
+	pushf
 	push ax
 	push bx
 	push cx
@@ -54,6 +55,7 @@ CRLF:
 	pop cx
 	pop bx
 	pop ax
+	popf
 
 	ret
 
@@ -71,6 +73,7 @@ directWriteChar:
 	push bp
 	mov bp,sp
 
+	pushf
 	push ax
 	push bx
 	push cx
@@ -82,18 +85,18 @@ directWriteChar:
 	mov es,ax			; ES = 0B800h
 
 	xor ah,ah
-	mov al,[bp-7]			; stored dh = row
+	mov al,[bp-9]			; stored dh = row
 	xor bh,bh
 	mov bl,VIDEO_COLUMN_COUNT
 	mul bx
 	shl ax,1			; multiply by 2
 	xor dh,dh
-	mov dl,[bp-8]			; stored dl = column
+	mov dl,[bp-10]			; stored dl = column
 	shl dx,1			; multiply by 2
 	add ax,dx
 
 	mov di,ax			; ES:DI = (dh * 80 + dl) * 2
-	mov ax,[bp-2]			; (attribute|character) from stack (original ax)
+	mov ax,[bp-4]			; (attribute|character) from stack (original ax)
 
 	cld
 
@@ -105,6 +108,7 @@ directWriteChar:
 	pop cx
 	pop bx
 	pop ax
+	popf
 
 	mov sp,bp
 	pop bp
@@ -261,8 +265,8 @@ delay:
 	mov bx,[46Ch]			; BIOS timer count is updated at 18.2 Hz
 
 .nextUpdate:
-	mov ax,[46Ch]			; start polling
-	cmp ax,bx			; same time counter?
+	mov ax,[46Ch]			; BIOS timer count is updated at 18.2 Hz
+	cmp ax,bx			; same timer count?
 	je .nextUpdate
 	mov bx,ax			; store the new compare value
 	loop .nextUpdate
