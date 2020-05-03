@@ -93,7 +93,7 @@ drawSetupTUI:
 
 	dec bl
 	cmp bl,4			; stop at intermediate frame intersection
-	jge .1
+	jae .1
 
 	dec bl				; prepare for upper mini-frame
 
@@ -113,7 +113,7 @@ drawSetupTUI:
 
 	dec bl
 	cmp bl,4			; stop at intermediate frame intersection
-	jge .2
+	jae .2
 
 	dec bl				; prepare for upper mini-frame
 

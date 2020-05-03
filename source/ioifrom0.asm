@@ -7,21 +7,29 @@
 ; - License: GNU General Public License v3.0                                -
 ; ---------------------------------------------------------------------------
 
+%define ROM
+;%define DOS
+
 	use16
 	cpu 286
 
 %include ".\source\include\equates.inc"
 
+%ifdef ROM
 	org ROMSTART
+%else
+	org 100h
+%endif
 
 section .text
 
 ; ROM BIOS Header
 ; ---------------------------------------------------------------------------
+%ifdef ROM
 	DB 55h
 	DB 0AAh
 	DB ROMBLOCKS
-
+%endif
 	jmp start
 
 	DB 0,'I/O-IF ROM #0',0
@@ -78,7 +86,13 @@ start:
 	pop bx
 	pop ax
 
+%ifdef ROM
 	retf
+%else
+	xor al,al
+	mov ah,4Ch
+	int 21h
+%endif
 
 ; I/OIF ROM BIOS SETUP Program trigger.
 ; ---------------------------------------------------------------------------
@@ -86,8 +100,8 @@ processSetup:
 	mov si,sPressDELKey
 	call directWrite
 
-	mov cx,100
-	call delay1sec
+	mov cx,1
+	call delay
 
 	mov ah,01h			; read the state of the keyboard buffer
 	int 16h
@@ -102,7 +116,6 @@ processSetup:
 	call enterSetup
 
 .exit:
-
 	ret
 
 ; Autodetection of IDE Devices.
@@ -115,7 +128,8 @@ autodetectDevices:
 	call directWrite
 
 	mov ax,PRIMARY_IDE_INTERFACE
-	mov bx,MASTER_DEVICE
+	mov bx,PRIMARY_IDE_INTERFACE_CONTROL
+	mov cx,MASTER_DEVICE
 	call autodetectDevice
 
 	mov ah,VIDEONORMAL
@@ -125,7 +139,8 @@ autodetectDevices:
 	call directWrite
 
 	mov ax,PRIMARY_IDE_INTERFACE
-	mov bx,SLAVE_DEVICE
+	mov bx,PRIMARY_IDE_INTERFACE_CONTROL
+	mov cx,SLAVE_DEVICE
 	call autodetectDevice
 
 	mov ah,VIDEONORMAL
@@ -135,7 +150,8 @@ autodetectDevices:
 	call directWrite
 
 	mov ax,SECONDARY_IDE_INTERFACE
-	mov bx,MASTER_DEVICE
+	mov bx,SECONDARY_IDE_INTERFACE_CONTROL
+	mov cx,MASTER_DEVICE
 	call autodetectDevice
 
 	mov ah,VIDEONORMAL
@@ -145,9 +161,12 @@ autodetectDevices:
 	call directWrite
 
 	mov ax,SECONDARY_IDE_INTERFACE
-	mov bx,SLAVE_DEVICE
+	mov bx,SECONDARY_IDE_INTERFACE_CONTROL
+	mov cx,SLAVE_DEVICE
 	call autodetectDevice
 
 	ret
 
-TIMES (ROMSIZE-($-$$)-ROMSTART) DB 00h
+%ifdef ROM
+	TIMES (ROMSIZE-($-$$)-ROMSTART) DB 00h
+%endif

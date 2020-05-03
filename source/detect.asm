@@ -45,7 +45,8 @@ check8bitCPU:
 ; Autodetection of an IDE device.
 ; Input:
 ;   AX - IDE Interface Base Address
-;   BX - Master/Slave
+;   BX - IDE Interface Controll Address
+;   CX - Master/Slave
 ; Output
 ;   none
 ; ---------------------------------------------------------------------------
@@ -57,6 +58,7 @@ autodetectDevice:
 	push ax
 	push bx
 	push cx
+	push dx
 	push si
 	push di
 	push ds
@@ -64,8 +66,132 @@ autodetectDevice:
 	pop ds
 	push es
 
-	; TODO : Add code to autodetect IDE devices.
+; TODO CEVA E AICI
 
+	xor ax,ax
+	mov ds,ax
+
+.wait400ns:
+	mov dx,[bp-6]			; IDE Interface Control Address
+	add dx,ALTERNATE_STATUS_REGISTER
+
+	mov cl,3
+.nextRead:
+	in al,dx			; takes 100ns
+	dec cl
+	jnz .nextRead
+
+.checkBSY:
+	mov dx,[bp-4]			; IDE Interface Base Address
+	add dx,STATUS_REGISTER
+
+	mov ax,18			; 18 Hz
+	shl ax,1			; multiply by 2 seconds
+	xchg ax,cx			; result in cx
+	mov bx,[46Ch]			; BIOS timer count is updated at 18.2 Hz
+
+.waitBSY:
+	in al,dx			; read
+	and al,STATUS_REGISTER_BSY
+	je .checkDRDY
+
+	mov ax,[46Ch]			; BIOS timer count is updated at 18.2 Hz
+	cmp ax,bx			; same time counter?
+	je .waitBSY
+	mov bx,ax			; store the new compare value
+	loop .waitBSY			; continue for 2 seconds
+
+	; TODO : This code is faulty.
+
+	jmp .detectNone
+
+.checkDRDY:
+	mov dx,[bp-4]			; IDE Interface Base Address
+	add dx,STATUS_REGISTER
+
+	mov ax,18			; 18 Hz
+	shl ax,1			; multiply by 2 seconds
+	xchg ax,cx			; result in cx
+	mov bx,[46Ch]			; BIOS timer count is updated at 18.2 Hz
+
+.waitDRDY:
+	in al,dx			; read
+	and al,STATUS_REGISTER_DRDY
+	jne .tempContinue
+
+	mov ax,[46Ch]			; BIOS timer count is updated at 18.2 Hz
+	cmp ax,bx			; same time counter?
+	je .waitDRDY
+	mov bx,ax			; store the new compare value
+	loop .waitDRDY			; continue for 2 seconds
+
+	jmp .detectNone			; time-out
+
+.tempContinue:
+jmp .fillbuff
+
+	cli
+
+	mov dx,[bp-4]			; IDE Interface Base Address
+	add dx,SELECT_DRIVE_AND_HEAD_REGISTER
+	mov al,[bp-8]			; Master/Slave
+	out dx,al
+
+	mov dx,[bp-4]			; IDE Interface Base Address
+	add dx,COMMAND_REGISTER
+	mov al,ATA_IDENTIFY_DEVICE_COMMAND
+	out dx,al
+
+	mov dx,[bp-4]			; IDE Interface Base Address
+	add dx,STATUS_REGISTER
+.3:
+	in al,dx
+	and al,STATUS_REGISTER_DRQ
+	je .3
+
+	mov dx,[bp-4]			; IDE Interface Base Address
+	add dx,DATA_REGISTER
+;	lea dx,[BUFFER] ;points DI to the buffer we're using
+;	mov cx,256
+
+;	cld
+
+;	rep insw
+
+.fillbuff:
+
+;DS:si
+;ES:di
+
+	;mov ax,cs
+	;mov ds,ax
+
+; TODO CEVA E AICI
+
+	xor ax,ax
+	mov es,ax
+
+    mov  si, prompt
+    mov  di, BUFFER
+
+    mov  cx,10
+
+.copyLoop:
+    mov  al, [si]
+    mov  [di], al
+    inc  si
+    inc  di
+    loop .copyLoop
+.Done:
+    mov  BYTE [di], 0
+
+
+	mov si,BUFFER
+	call print
+
+	jmp .exit
+
+.detectNone:
 	mov ah,VIDEOHIGHLIGHT
 	mov si,sAutodetectNone
 	call directWrite
@@ -73,10 +199,13 @@ autodetectDevice:
 .exit:
 	call CRLF
 
+	sti
+
 	pop es
 	pop ds
 	pop di
 	pop si
+	pop dx
 	pop cx
 	pop bx
 	pop ax
@@ -87,6 +216,7 @@ autodetectDevice:
 
 	ret
 
-section .bss
+	prompt		db	"Enter your text string: ",0
 
-BUFFER				RESB 256
+section .bss
+	BUFFER		RESB	256
