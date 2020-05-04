@@ -32,38 +32,6 @@ drawSetupTUI:
 .drawMainFrame:
 	mov ah,BIOS_TEXT_COLOR
 
-.drawAllCorners:
-	mov cx,1			; write one time
-
-	mov al,0C9h			; top left of frame
-	xor dx,dx			; row,column = 0,0
-	call directWriteChar
-
-	mov al,0BBh			; top right of frame
-	xor dh,dh
-	mov dl,VIDEO_COLUMN_COUNT-1	; top-right = 0,79
-	call directWriteChar
-
-	mov al,0CCh			; intermediary left of frame
-	mov dh,3
-	xor dl,dl			; row,column = 3,0
-	call directWriteChar
-
-	mov al,0B9h			; intermediary right of frame
-	mov dh,3
-	mov dl,VIDEO_COLUMN_COUNT-1	; top-right = 3,79
-	call directWriteChar
-
-	mov al,0C8h			; bottom left of frame
-	mov dh,VIDEO_ROW_COUNT-1
-	xor dl,dl			; bottom-left = 24,0
-	call directWriteChar
-
-	mov al,0BCh			; bottom right of frame
-	mov dh,VIDEO_ROW_COUNT-1
-	mov dl,VIDEO_COLUMN_COUNT-1	; bottom-right = 24,79
-	call directWriteChar
-
 .drawHorizontalFrames:
 	mov al,0CDh			; horizontal frame
 	mov cx,VIDEO_COLUMN_COUNT-2
@@ -74,6 +42,14 @@ drawSetupTUI:
 
 	mov dh,3
 	mov dl,1			; row,column = 3,1
+	call directWriteChar
+
+	mov dh,VIDEO_ROW_COUNT-1
+	mov dl,1			; bottom-left = 24,1
+	call directWriteChar
+
+	mov dh,10
+	mov dl,1			; row,column = 10,1
 	call directWriteChar
 
 	mov dh,VIDEO_ROW_COUNT-1
@@ -92,16 +68,8 @@ drawSetupTUI:
 	call directWriteChar
 
 	dec bl
-	cmp bl,4			; stop at intermediate frame intersection
+	cmp bl,1			; stop at intermediate frame intersection
 	jae .1
-
-	dec bl				; prepare for upper mini-frame
-
-	mov dh,bl			; top-right = 3,0
-	call directWriteChar
-
-	dec dh				; top-right = 2,0
-	call directWriteChar
 
 .drawRightFrame:
 	mov dl,VIDEO_COLUMN_COUNT-1	; column
@@ -112,15 +80,49 @@ drawSetupTUI:
 	call directWriteChar
 
 	dec bl
-	cmp bl,4			; stop at intermediate frame intersection
+	cmp bl,1			; stop at intermediate frame intersection
 	jae .2
 
-	dec bl				; prepare for upper mini-frame
+.drawAllCorners:
+	mov cx,1			; write one time
 
-	mov dh,bl			; top-right = 3,79
+	mov al,0C9h			; top left of frame
+	xor dx,dx			; row,column = 0,0
 	call directWriteChar
 
-	dec dh				; top-right = 2,79
+	mov al,0BBh			; top right of frame
+	xor dh,dh
+	mov dl,VIDEO_COLUMN_COUNT-1	; top-right = 0,79
+	call directWriteChar
+
+	mov al,0CCh			; intermediary upper-left of frame
+	mov dh,3
+	xor dl,dl			; row,column = 3,0
+	call directWriteChar
+
+	mov al,0B9h			; intermediary upper-right of frame
+	mov dh,3
+	mov dl,VIDEO_COLUMN_COUNT-1	; top-right = 3,79
+	call directWriteChar
+
+	mov al,0CCh			; intermediary middle-left of frame
+	mov dh,10
+	xor dl,dl			; row,column = 10,0
+	call directWriteChar
+
+	mov al,0B9h			; intermediary middle-right of frame
+	mov dh,10
+	mov dl,VIDEO_COLUMN_COUNT-1	; top-right = 10,79
+	call directWriteChar
+
+	mov al,0C8h			; bottom left of frame
+	mov dh,VIDEO_ROW_COUNT-1
+	xor dl,dl			; bottom-left = 24,0
+	call directWriteChar
+
+	mov al,0BCh			; bottom right of frame
+	mov dh,VIDEO_ROW_COUNT-1
+	mov dl,VIDEO_COLUMN_COUNT-1	; bottom-right = 24,79
 	call directWriteChar
 
 .drawText:
@@ -140,6 +142,58 @@ drawSetupTUI:
 
 	mov ah,BIOS_TEXT_COLOR
 	mov si,sCopyright
+	call directWrite
+
+	mov ah,02h			; set cursor position
+	mov dh,4			; row
+	mov dl,2			; column
+	int 10h
+
+	mov ah,BIOS_TEXT_COLOR
+	mov si,sIDEDevices
+	call directWrite
+
+	mov ah,BIOS_TEXT_COLOR
+	mov al,0C4h			; top left of frame
+	mov cx,76			; write 76 times
+	inc dh				; row
+	mov dl,2			; column
+	call directWriteChar
+
+	mov ah,02h			; set cursor position
+	inc dh				; row
+	mov dl,2			; column
+	int 10h
+
+	mov ah,BIOS_TEXT_COLOR
+	mov si,sIDEDevicePM
+	call directWrite
+
+	mov ah,02h			; set cursor position
+	inc dh				; row
+	mov dl,2			; column
+	int 10h
+
+	mov ah,BIOS_TEXT_COLOR
+	mov si,sIDEDevicePS
+	call directWrite
+
+	mov ah,02h			; set cursor position
+	inc dh				; row
+	mov dl,2			; column
+	int 10h
+
+	mov ah,BIOS_TEXT_COLOR
+	mov si,sIDEDeviceSS
+	call directWrite
+
+	mov ah,02h			; set cursor position
+	inc dh				; row
+	mov dl,2			; column
+	int 10h
+
+	mov ah,BIOS_TEXT_COLOR
+	mov si,sIDEDeviceSS
 	call directWrite
 
 	ret
@@ -221,6 +275,8 @@ enterSetup:
 
 	cmp al,KBD_ENTER
 	jz .exit
+	cmp al,KBD_ESC
+	jz .partialRedraw
 	sub al,20h			; coonvert to uppercase
 	cmp al,KBD_Y
 	jz .exit
