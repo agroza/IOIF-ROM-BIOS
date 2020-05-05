@@ -9,26 +9,31 @@
 
 section .text
 
-sProgram		DB 'I/O Interface ROM BIOS  VER 0.1 REV. A',13,10,0
-sCopyright		DB 'Copyright (C) 2020 Microprogramming TECHNIQUES',13,10,10,0
-sBIOSDisabled		DB '16-bit CPU required. ROM BIOS disabled.',13,10,0
-sPressDELKey		DB 'Press DEL to enter I/OIF SETUP...',13,10,10,0
+sProgram			DB 'I/O Interface ROM BIOS  VER 0.1 REV. A',13,10,0
+sCopyright			DB 'Copyright (C) 2020 Microprogramming TECHNIQUES',13,10,10,0
+sBIOSDisabled			DB '16-bit CPU required. ROM BIOS disabled.',13,10,0
+sPressDELKey			DB 'Press DEL to enter I/OIF SETUP...',13,10,10,0
 
-sSetupESCExit		DB '[ESC] - Exit',0
-sSetupUsage		DB '[ENTER] - Select  ',24,25,27,26,' - Move  PU/PD - Modify',0
-sSetupExit		DB 'Exit?  (Y/n)',0
+sSetupESCExit			DB '[ESC] - Exit',0
+sSetupUsage			DB '[ENTER] - Select  ',24,25,27,26,' - Move  PU/PD - Modify',0
+sSetupExit			DB 'Exit?  (Y/n)',0
 
-sAutodetectIDE		DB 'Detecting IDE ',0
-sIDEDevicePM		DB 'Primary Master   : ',0
-sIDEDevicePS		DB 'Primary Slave    : ',0
-sIDEDeviceSM		DB 'Secondary Master : ',0
-sIDEDeviceSS		DB 'Secondary Slave  : ',0
+sDetectingIDE			DB 'Detecting IDE ',0
+sIDEDevicePM			DB 'Primary Master   : ',0
+sIDEDevicePS			DB 'Primary Slave    : ',0
+sIDEDeviceSM			DB 'Secondary Master : ',0
+sIDEDeviceSS			DB 'Secondary Slave  : ',0
 
-sIDEDevices		DB 'IDE DEVICES',0
-sIDEParameters          DB 'TYPE  CYLNS  HEADS  SECTS  WPCOMP  LDZONE  SIZE  MODE',0
+sIDEDevices			DB 'IDE DEVICES',0
+sIDEParameters			DB 'TYPE  CYLNS  HEADS  SECTS  WPCOMP  LDZONE  SIZE  MODE',0
 
-sIDEDeviceTypeNone	DB 'NONE',0
-sIDEDeviceTypeUser	DB 'USER',0
-sIDEDeviceTypeAuto	DB 'AUTO',0
+sIDEDeviceTypeNone		DB 'NONE',0
+sIDEDeviceTypeUser		DB 'USER',0
+sIDEDeviceTypeAuto		DB 'AUTO',0
 
-sIDEDeviceModeCHS	DB 'CHS',0
+sIDEDeviceModeCHS		DB 'CHS',0
+
+sMainMenuDefineParameters	DB 'DEFINE PARAMETERS',0
+sMainMenuAutodetectAll		DB 'AUTODETECT ALL',0
+sMainMenuExit			DB 'EXIT',0
+sMainMenuSaveAndExit		DB 'SAVE & EXIT',0
