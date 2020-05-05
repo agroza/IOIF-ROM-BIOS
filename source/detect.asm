@@ -42,33 +42,37 @@ check8bitCPU:
 
 	ret
 
-; Autodetection of an IDE device.
+; Identification of an IDE device.
 ; Input:
 ;   AX - IDE Interface Base Address
 ;   BX - IDE Interface Controll Address
 ;   CL - Master/Slave
 ; Output
-;   none
+;   AL - 0 = success; 1 = error
+;   IDE_DEVICE_DATA - is filled
 ; ---------------------------------------------------------------------------
-autodetectDevice:
+identifyDevice:
 	push bp
 	mov bp,sp
 
+	sub sp,6			; allocate 6 bytes
+
 	pushf
-	push ax
-	push bx
-	push cx
 	push dx
 	push si
 	push di
 	push ds
 	push es
 
+	mov word [bp-2],ax		; IDE Interface Base Address
+	mov word [bp-4],bx		; IDE Interface Controll Address
+	mov word [bp-6],cx		; Master/Slave
+
 	xor ax,ax
 	mov ds,ax			; DS = 0000h
 
 .wait400ns:
-	mov dx,[bp-6]			; IDE Interface Control Address
+	mov dx,[bp-4]			; IDE Interface Control Address
 	add dx,ALTERNATE_STATUS_REGISTER
 
 	mov cl,3
@@ -78,7 +82,7 @@ autodetectDevice:
 	jnz .nextRead
 
 .checkBSY:
-	mov dx,[bp-4]			; IDE Interface Base Address
+	mov dx,[bp-2]			; IDE Interface Base Address
 	add dx,STATUS_REGISTER
 
 	mov ax,18			; 18 Hz
@@ -97,10 +101,10 @@ autodetectDevice:
 	mov bx,ax			; store the new compare value
 	loop .waitBSY			; continue until time-out
 
-	jmp .detectNone			; time-out
+	jmp .clearIDEDeviceData		; time-out, assume error
 
 .checkDRDY:
-	mov dx,[bp-4]			; IDE Interface Base Address
+	mov dx,[bp-2]			; IDE Interface Base Address
 	add dx,STATUS_REGISTER
 
 	mov ax,18			; 18 Hz
@@ -119,23 +123,23 @@ autodetectDevice:
 	mov bx,ax			; store the new compare value
 	loop .waitDRDY			; continue until time-out
 
-	jmp .detectNone			; time-out
+	jmp .clearIDEDeviceData		; time-out, assume error
 
 .sendIdentifyCommand:
 	cli
 
-	mov dx,[bp-4]			; IDE Interface Base Address
+	mov dx,[bp-2]			; IDE Interface Base Address
 	add dx,SELECT_DRIVE_AND_HEAD_REGISTER
-	mov al,[bp-8]			; Master/Slave
+	mov al,[bp-6]			; Master/Slave
 	out dx,al
 
-	mov dx,[bp-4]			; IDE Interface Base Address
+	mov dx,[bp-2]			; IDE Interface Base Address
 	add dx,COMMAND_REGISTER
 	mov al,ATA_IDENTIFY_DEVICE_COMMAND
 	out dx,al
 
 .waitDRQ:
-	mov dx,[bp-4]			; IDE Interface Base Address
+	mov dx,[bp-2]			; IDE Interface Base Address
 	add dx,STATUS_REGISTER
 
 .checkDRQ:
@@ -143,7 +147,7 @@ autodetectDevice:
 	and al,STATUS_REGISTER_DRQ
 	je .checkDRQ
 
-	mov dx,[bp-4]			; IDE Interface Base Address
+	mov dx,[bp-2]			; IDE Interface Base Address
 	add dx,DATA_REGISTER
 
 	mov ax,cs
@@ -158,34 +162,132 @@ autodetectDevice:
 
 	sti
 
+	call processIDEDeviceData
+
+	xor al,al			; assume success
+
+	jmp .exit
+
+.clearIDEDeviceData:
 	mov ax,cs
-	mov ds,ax			; DS:SI = CS:IDE_DEVICE_DATA
+	mov es,ax			; ES:DI = CS:IDE_DEVICE_DATA
+
+	mov di,IDE_DEVICE_DATA
+	mov ax,00h
+	mov cx,256
+
+	cld
+
+	rep stosw			; fill the buffer with device data
+
+	call processIDEDeviceData
+
+	mov al,1			; assume error
+
+.exit:
+	pop es
+	pop ds
+	pop di
+	pop si
+	pop dx
+	popf
+
+	mov sp,bp
+	pop bp
+
+	ret
+
+; Identification of an IDE device.
+; Input:
+;   AX - IDE Interface Base Address
+;   BX - IDE Interface Controll Address
+;   CL - Master/Slave
+; Output
+;   AL - 0 = success; 1 = error
+;   IDE_DEVICE_DATA - is filled
+; ---------------------------------------------------------------------------
+processIDEDeviceData:
+	push si
+	push ds
+
+	mov ax,cs
+	mov ds,ax			; DS:SI = CS:SI
+
+	mov si,IDE_DEVICE_DATA
+
+	add si,2
+	lodsw
+	mov word [IDE_DEVICE_CYLINDERS],ax
+	mov word [IDE_DEVICE_LDZONE],ax
+
+	add si,2
+	lodsw
+	mov word [IDE_DEVICE_HEADS],ax
+
+	add si,4
+	lodsw
+	mov word [IDE_DEVICE_SECTORS],ax
+
+	mov word [IDE_DEVICE_WPCOMP],WPCOMP_VALUE
+
+	pop ds
+	pop si
+
+	ret
+
+; Autodetection of an IDE device.
+; Input:
+;   AX - IDE Interface Base Address
+;   BX - IDE Interface Controll Address
+;   CL - Master/Slave
+; Output
+;   none
+; ---------------------------------------------------------------------------
+autodetectDevice:
+	push si
+	push di
+	push ds
+	push es
+
+	call identifyDevice
+
+	or al,al
+	jnz .detectNone
+
+	mov ax,cs
+	mov ds,ax			; DS:SI = CS:DS
+	mov es,ax			; ES:DS = CS:DS
 
 	; TODO : Refactor this code and continue the implementation.
 
 .printATAInformation:
 	mov si,IDE_DEVICE_DATA
-	add si,26
-	mov cx,20
+	add si,54
 
-	mov bx,0007h
+	mov di,IDE_DEVICE_MODEL
 
-.printModel:
+	mov cx,10			; read 20 characters (10 words)
+
+	cld
+
+.nextByte:
 	lodsw
-	mov dx,ax
-	xchg dh,dl
+	xchg ah,al
+	stosw
 
-	mov ah,0Eh			; brutal teletype printing
-	mov al,dl
-	int 10h
-	mov al,dh
-	int 10h
-	loop .printModel
+	loop .nextByte
+
+	xor al,al			; null-terminated string
+	stosb
+
+	mov ah,HIGHLIGHT_TEXT_COLOR
+	mov si,IDE_DEVICE_MODEL
+	call directWrite
 
 	jmp .exit
 
 .detectNone:
-	mov ah,VIDEOHIGHLIGHT
+	mov ah,HIGHLIGHT_TEXT_COLOR
 	mov si,sIDEDeviceTypeNone
 	call directWrite
 
@@ -196,16 +298,15 @@ autodetectDevice:
 	pop ds
 	pop di
 	pop si
-	pop dx
-	pop cx
-	pop bx
-	pop ax
-	popf
-
-	mov sp,bp
-	pop bp
 
 	ret
 
 section .bss
 	IDE_DEVICE_DATA			RESB	256
+
+	IDE_DEVICE_MODEL		RESB	21
+	IDE_DEVICE_CYLINDERS		RESW	1
+	IDE_DEVICE_HEADS		RESW	1
+	IDE_DEVICE_SECTORS		RESW	1
+	IDE_DEVICE_WPCOMP		RESW	1
+	IDE_DEVICE_LDZONE		RESW	1

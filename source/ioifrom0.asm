@@ -36,8 +36,9 @@ section .text
 
 %include ".\source\debug.asm"
 %include ".\source\routines.asm"
-%include ".\source\setup.asm"
+%include ".\source\cmos.asm"
 %include ".\source\detect.asm"
+%include ".\source\setup.asm"
 
 %include ".\source\include\data.inc"
 %include ".\source\include\messages.inc"
@@ -57,10 +58,10 @@ start:
 	mov ss,ax
 	mov es,ax
 
-	mov ah,VIDEOHIGHLIGHT
+	mov ah,HIGHLIGHT_TEXT_COLOR
 	mov si,sProgram
 	call directWrite
-	mov ah,VIDEONORMAL
+	mov ah,NORMAL_TEXT_COLOR
 	mov si,sCopyright
 	call directWrite
 
@@ -123,8 +124,8 @@ processSetup:
 ; Autodetection of IDE Devices.
 ; ---------------------------------------------------------------------------
 autodetectDevices:
-	mov ah,VIDEONORMAL
-	mov si,sAutodetectIDE
+	mov ah,NORMAL_TEXT_COLOR
+	mov si,sDetectingIDE
 	call directWrite
 	mov si,sIDEDevicePM
 	call directWrite
@@ -134,8 +135,8 @@ autodetectDevices:
 	mov cl,IDE_MASTER_DEVICE
 	call autodetectDevice
 
-	mov ah,VIDEONORMAL
-	mov si,sAutodetectIDE
+	mov ah,NORMAL_TEXT_COLOR
+	mov si,sDetectingIDE
 	call directWrite
 	mov si,sIDEDevicePS
 	call directWrite
@@ -145,8 +146,8 @@ autodetectDevices:
 	mov cl,IDE_SLAVE_DEVICE
 	call autodetectDevice
 
-	mov ah,VIDEONORMAL
-	mov si,sAutodetectIDE
+	mov ah,NORMAL_TEXT_COLOR
+	mov si,sDetectingIDE
 	call directWrite
 	mov si,sIDEDeviceSM
 	call directWrite
@@ -156,8 +157,8 @@ autodetectDevices:
 	mov cl,IDE_MASTER_DEVICE
 	call autodetectDevice
 
-	mov ah,VIDEONORMAL
-	mov si,sAutodetectIDE
+	mov ah,NORMAL_TEXT_COLOR
+	mov si,sDetectingIDE
 	call directWrite
 	mov si,sIDEDeviceSS
 	call directWrite
