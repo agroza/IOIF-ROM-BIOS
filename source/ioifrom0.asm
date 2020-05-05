@@ -38,6 +38,8 @@ section .text
 %include ".\source\routines.asm"
 %include ".\source\setup.asm"
 %include ".\source\detect.asm"
+
+%include ".\source\include\data.inc"
 %include ".\source\include\messages.inc"
 
 ; Initialization Routine
@@ -129,7 +131,7 @@ autodetectDevices:
 
 	mov ax,PRIMARY_IDE_INTERFACE
 	mov bx,PRIMARY_IDE_INTERFACE_CONTROL
-	mov cx,IDE_MASTER_DEVICE
+	mov cl,IDE_MASTER_DEVICE
 	call autodetectDevice
 
 	mov ah,VIDEONORMAL
@@ -140,7 +142,7 @@ autodetectDevices:
 
 	mov ax,PRIMARY_IDE_INTERFACE
 	mov bx,PRIMARY_IDE_INTERFACE_CONTROL
-	mov cx,IDE_SLAVE_DEVICE
+	mov cl,IDE_SLAVE_DEVICE
 	call autodetectDevice
 
 	mov ah,VIDEONORMAL
@@ -151,7 +153,7 @@ autodetectDevices:
 
 	mov ax,SECONDARY_IDE_INTERFACE
 	mov bx,SECONDARY_IDE_INTERFACE_CONTROL
-	mov cx,IDE_MASTER_DEVICE
+	mov cl,IDE_MASTER_DEVICE
 	call autodetectDevice
 
 	mov ah,VIDEONORMAL
@@ -162,7 +164,7 @@ autodetectDevices:
 
 	mov ax,SECONDARY_IDE_INTERFACE
 	mov bx,SECONDARY_IDE_INTERFACE_CONTROL
-	mov cx,IDE_SLAVE_DEVICE
+	mov cl,IDE_SLAVE_DEVICE
 	call autodetectDevice
 
 	ret
