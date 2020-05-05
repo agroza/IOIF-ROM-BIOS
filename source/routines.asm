@@ -9,6 +9,20 @@
 
 section .text
 
+; Moves the cursor to the specified row and column.
+; Input:
+;   DH - row
+;   DL - column
+; Output:
+;   none
+; ---------------------------------------------------------------------------
+moveCursor:
+	mov ah,02h			; set cursor position
+	xor bh,bh			; video page 0
+	int 10h
+
+	ret
+
 ; Advances the cursor to the next line, column 0.
 ; Input:
 ;   none
@@ -31,13 +45,12 @@ CRLF:
 	cmp dh,VIDEO_ROW_COUNT-1	; last row?
 	jz .scrollUp
 	inc dh				; next row
-	mov ah,02h			; set cursor position
-	int 10h
+	call moveCursor
+
 	jmp .exit
 
 .scrollUp:
-	mov ah,02h			; set cursor position
-	int 10h
+	call moveCursor
 
 	mov ah,08h			; read character and attribute at cursor position
 	int 10h
@@ -100,13 +113,13 @@ highlightRegion:
 	mov si,ax
 	mov di,ax			; ES:DI = (dh * 80 + dl) * 2
 
-.1:
+.doHighlight:
 	lodsw
 	mov ah,[bp-3]			; attribute from stack (original ax)
 
 	stosw
 
-	loop .1
+	loop .doHighlight
 
 	pop es
 	pop ds
@@ -179,7 +192,7 @@ directWriteChar:
 
 	ret
 
-; Writes a string directly to the VGA RAM.
+; Writes a null-terminated string directly to the VGA RAM.
 ; Input:
 ;   AH    - color attribute
 ;   DS:SI - pointer to string
@@ -247,23 +260,22 @@ directWrite:
 
 .CR:
 	mov dl,0			; first column
-	jmp .setCursor
+	call moveCursor
+
+	jmp .computePosition
 
 .LF:
 	cmp dh,VIDEO_ROW_COUNT-1	; last row?
 	jz .scrollUp
 	inc dh				; next row
+	call moveCursor
 
-	jmp .setCursor
+	jmp .computePosition
 
 .scrollUp:
-	mov ah,02h			; set cursor position
-	xor bh,bh			; video page 0
-	int 10h
+	call moveCursor
 
-	; TODO : Optimize this part.
-
-	push dx
+	push dx				; save row,column
 
 	mov ah,08h			; read character and attribute at cursor position
 	int 10h
@@ -276,21 +288,14 @@ directWrite:
 	mov dl,VIDEO_COLUMN_COUNT-1	; last column
 	int 10h
 
-	pop dx
+	pop dx				; restore row,column
 
-	jmp .nextByte ;.computePosition
+	; TODO : Should it be .computePosition ?
 
-.setCursor:
-	mov ah,02h			; set cursor position
-	xor bh,bh			; video page 0
-	int 10h
-
-	jmp .computePosition
+	jmp .nextByte
 
 .exit:
-	mov ah,02h			; set cursor position
-	xor bh,bh			; video page 0
-	int 10h
+	call moveCursor
 
 	pop es
 	pop ds
