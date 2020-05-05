@@ -11,7 +11,7 @@ It is supposed to perform the following tasks:
 
 My goals would be to keep the compiled code within a 28C64 (64 Kbit / 8 KB) EEPROM integrated circuit. Should I extend over this capacity, there is a second ROM socket on the printed circuit board assembly (PCBA). If I exceed 16 KB then I have forseen this and designed the I/O Interface to accept 28C256 EEPROMs as well.
 
-PS: I was once skilled in assembly language and I used TASM and TLINK on a daily basis. But I haven't touched assembley since at least 2005. That makes about 15 years. So I expect this project will evolve slowly as I remember all the tricks I once knew.
+PS: I was once skilled in assembly language and I used TASM and TLINK on a daily basis. But I haven't touched assembly since at least 2005. That makes about 15 years. So I expect this project will evolve slowly as I remember all the tricks I once knew.
 
 ### Notes:
 * At the moment this is a work in progress so the compiled ROM mirocode is pretty much useless.
