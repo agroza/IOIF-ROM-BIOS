@@ -7,8 +7,8 @@
 ; - License: GNU General Public License v3.0                                -
 ; ---------------------------------------------------------------------------
 
-;%define ROM
-%define DOS
+%define ROM
+;%define DOS
 
 	use16
 	cpu 286
@@ -124,7 +124,7 @@ autodetectDevices:
 	mov ah,VIDEONORMAL
 	mov si,sAutodetectIDE
 	call directWrite
-	mov si,sAutodetectPM
+	mov si,sIDEDevicePM
 	call directWrite
 
 	mov ax,PRIMARY_IDE_INTERFACE
@@ -135,7 +135,7 @@ autodetectDevices:
 	mov ah,VIDEONORMAL
 	mov si,sAutodetectIDE
 	call directWrite
-	mov si,sAutodetectPS
+	mov si,sIDEDevicePS
 	call directWrite
 
 	mov ax,PRIMARY_IDE_INTERFACE
@@ -146,7 +146,7 @@ autodetectDevices:
 	mov ah,VIDEONORMAL
 	mov si,sAutodetectIDE
 	call directWrite
-	mov si,sAutodetectSM
+	mov si,sIDEDeviceSM
 	call directWrite
 
 	mov ax,SECONDARY_IDE_INTERFACE
@@ -157,7 +157,7 @@ autodetectDevices:
 	mov ah,VIDEONORMAL
 	mov si,sAutodetectIDE
 	call directWrite
-	mov si,sAutodetectSS
+	mov si,sIDEDeviceSS
 	call directWrite
 
 	mov ax,SECONDARY_IDE_INTERFACE

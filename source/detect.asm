@@ -147,9 +147,9 @@ autodetectDevice:
 	add dx,DATA_REGISTER
 
 	mov ax,cs
-	mov es,ax			; ES:DI = CS:BUFFER
+	mov es,ax			; ES:DI = CS:IDE_DEVICE_DATA
 
-	mov di,BUFFER
+	mov di,IDE_DEVICE_DATA
 	mov cx,256
 
 	cld
@@ -159,12 +159,12 @@ autodetectDevice:
 	sti
 
 	mov ax,cs
-	mov ds,ax			; DS:SI = CS:BUFFER
+	mov ds,ax			; DS:SI = CS:IDE_DEVICE_DATA
 
 	; TODO : Refactor this code and continue the implementation.
 
 .printATAInformation:
-	mov si,BUFFER
+	mov si,IDE_DEVICE_DATA
 	add si,26
 	mov cx,20
 
@@ -186,7 +186,7 @@ autodetectDevice:
 
 .detectNone:
 	mov ah,VIDEOHIGHLIGHT
-	mov si,sAutodetectNone
+	mov si,sIDEDeviceTypeNone
 	call directWrite
 
 .exit:
@@ -208,4 +208,4 @@ autodetectDevice:
 	ret
 
 section .bss
-	BUFFER		RESB	256
+	IDE_DEVICE_DATA			RESB	256

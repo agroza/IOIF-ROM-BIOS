@@ -9,7 +9,7 @@
 
 section .text
 
-; Routine that advances the cursor to the next line, column 0.
+; Advances the cursor to the next line, column 0.
 ; Input:
 ;   none
 ; Output:
@@ -28,7 +28,7 @@ CRLF:
 
 	xor dl,dl			; first column
 
-	cmp dh,24			; last row?
+	cmp dh,VIDEO_ROW_COUNT-1	; last row?
 	jz .scrollUp
 	inc dh				; next row
 	mov ah,02h			; set cursor position
@@ -46,8 +46,8 @@ CRLF:
 	mov ah,06h			; scroll up window
 	mov al,1			; by one line
 	xor cx,cx			; row,column = 0,0
-	mov dh,24			; last row
-	mov dl,79			; last column
+	mov dh,VIDEO_ROW_COUNT-1	; last row
+	mov dl,VIDEO_COLUMN_COUNT-1	; last column
 	int 10h
 
 .exit:
@@ -56,6 +56,70 @@ CRLF:
 	pop bx
 	pop ax
 	popf
+
+	ret
+
+; Highlight a linear region directly in the VGA RAM.
+; Input:
+;   AH - color attribute
+;   DH - row
+;   DL - column
+;   CX - number of characters
+; Output:
+;   none
+; ---------------------------------------------------------------------------
+highlightRegion:
+	push bp
+	mov bp,sp
+
+	pushf
+	push ax
+	push bx
+	push cx
+	push dx
+	push si
+	push di
+	push ds
+	push es
+
+	mov ax,VIDEO_RAM_SEGMENT
+	mov ds,ax
+	mov es,ax			; ES = 0B800h
+
+	xor ah,ah
+	mov al,[bp-9]			; stored dh = row
+	xor bh,bh
+	mov bl,VIDEO_COLUMN_COUNT
+	mul bx
+	shl ax,1			; multiply by 2
+	xor dh,dh
+	mov dl,[bp-10]			; stored dl = column
+	shl dx,1			; multiply by 2
+	add ax,dx
+
+	mov si,ax
+	mov di,ax			; ES:DI = (dh * 80 + dl) * 2
+
+.1:
+	lodsw
+	mov ah,[bp-3]			; attribute from stack (original ax)
+
+	stosw
+
+	loop .1
+
+	pop es
+	pop ds
+	pop di
+	pop si
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+	popf
+
+	mov sp,bp
+	pop bp
 
 	ret
 
@@ -186,7 +250,7 @@ directWrite:
 	jmp .setCursor
 
 .LF:
-	cmp dh,24			; last row?
+	cmp dh,VIDEO_ROW_COUNT-1	; last row?
 	jz .scrollUp
 	inc dh				; next row
 
@@ -208,8 +272,8 @@ directWrite:
 	mov ah,06h			; scroll up window
 	mov al,1			; by one line
 	xor cx,cx			; row,column = 0,0
-	mov dh,24			; last row
-	mov dl,79			; last column
+	mov dh,VIDEO_ROW_COUNT-1	; last row
+	mov dl,VIDEO_COLUMN_COUNT-1	; last column
 	int 10h
 
 	pop dx
