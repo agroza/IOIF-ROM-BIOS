@@ -1,7 +1,19 @@
 # IOIF-ROM-BIOS
 I/O Interface ROM BIOS
 
-## Notes:
+## Synopsis:
+This repository contains the source code for the software that will run on my DIY [ISA I/O Interface](http://www.alexandrugroza.ro/microelectronics/isa-io-interface/index.html) card that you cand find on the [Microelectronics](http://www.alexandrugroza.ro/microelectronics/index.html) page on my site.
+
+It is supposed to perform the following tasks:
+* Autodetection of up to four IDE devices that might be connected to the two IDE interfaces on the card.
+* Provide a ROM BIOS text-mode user interface that allows me to manually configure IDE devices.
+* Other that I haven't thought of.
+
+My goals would be to keep the compiled code within a 28C64 (64 Kbit / 8 KB) EEPROM integrated circuit. Should I extend over this capacity, there is a second ROM socket on the printed circuit board assembly (PCBA). If I exceed 16 KB then I have forseen this and designed the I/O Interface to accept 28C256 EEPROMs as well.
+
+PS: I was once skilled in assembly language and I used TASM and TLINK on a daily basis. But I haven't touched assembley since at least 2005. That makes about 15 years. So I expect this project will evolve slowly as I remember all the tricks I once knew.
+
+### Notes:
 * At the moment this is a work in progress so the compiled ROM mirocode is pretty much useless.
 * In order to compile the ROM binary file, you need ```nasm.exe``` and ```romcksum.exe``` to be present in the .\bin subdirectory.
 * Optionally you also need ```sclc.exe``` in the .\bin subdirectory.
