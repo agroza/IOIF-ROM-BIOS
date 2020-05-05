@@ -78,7 +78,7 @@ IDE_DEVICE_LDZONE_OFFSET		EQU	61
 IDE_DEVICE_LDZONE_LENGTH		EQU	8
 IDE_DEVICE_SIZE_OFFSET			EQU	68
 IDE_DEVICE_SIZE_LENGTH			EQU	6
-IDE_DEVICE_MODE_OFFSET			EQU	74
+IDE_DEVICE_MODE_OFFSET			EQU	75
 IDE_DEVICE_MODE_LENGTH			EQU	6
 
 ; IDE Master/Slave Identifiers
@@ -110,16 +110,26 @@ ALTERNATE_STATUS_REGISTER		EQU	06h	; read-only
 DEVICE_CONTROL_REGISTER			EQU	06h	; write-only
 DEVICE_ADDRESS_REGISTER			EQU	07h	; not used
 
+; IDE Error Register Bits
+ERROR_REGISTER_BBK			EQU	1 << 7	; bad block detected
+ERROR_REGISTER_UNC			EQU	1 << 6	; uncorrectable data error
+ERROR_REGISTER_MC			EQU	1 << 5	; media changed
+ERROR_REGISTER_IDNF			EQU	1 << 4	; ID not found
+ERROR_REGISTER_MCR			EQU	1 << 3	; media change request
+ERROR_REGISTER_ABRT			EQU	1 << 2	; command aborted
+ERROR_REGISTER_TK0NF			EQU	1 << 1	; track 0 not found
+ERROR_REGISTER_AMNF			EQU	1 << 0	; address mark not found
+
 ; IDE Status Register Bits
 ; ---------------------------------------------------------------------------
-STATUS_REGISTER_BSY			EQU	1 << 7	; Busy
-STATUS_REGISTER_DRDY			EQU	1 << 6	; Device Ready
-STATUS_REGISTER_DF			EQU	1 << 5	; Device Fault
-STATUS_REGISTER_DSC			EQU	1 << 4	; Device Seek Complete
-STATUS_REGISTER_DRQ			EQU	1 << 3	; Data Request Ready
-STATUS_REGISTER_CORR			EQU	1 << 2	; Corrected Data
-STATUS_REGISTER_IDX			EQU	1 << 1	; Index
-STATUS_REGISTER_ERR			EQU	1 << 0	; Error
+STATUS_REGISTER_BSY			EQU	1 << 7	; busy
+STATUS_REGISTER_DRDY			EQU	1 << 6	; device ready
+STATUS_REGISTER_DF			EQU	1 << 5	; device fault
+STATUS_REGISTER_DSC			EQU	1 << 4	; device seek complete
+STATUS_REGISTER_DRQ			EQU	1 << 3	; data request ready
+STATUS_REGISTER_CORR			EQU	1 << 2	; corrected data
+STATUS_REGISTER_IDX			EQU	1 << 1	; index
+STATUS_REGISTER_ERR			EQU	1 << 0	; error
 
 ; IDE/ATA Commands
 ; ---------------------------------------------------------------------------
