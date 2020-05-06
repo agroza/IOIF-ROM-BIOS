@@ -13,9 +13,11 @@ section .text
 ; Technically, the I/O Interface ISA card could work with 8-bit machines.
 ; But by design, the IDE interfaces are hard-wired for 16-bit ISA slots.
 ; Input:
-;   none
+;     none
 ; Output
-;   AL - 0 = 8-bit, 1 = 16-bit
+;     AL - 0 = 8-bit, 1 = 16-bit
+; Preserves:
+;     FLAGS
 ; ---------------------------------------------------------------------------
 check8bitCPU:
 	pushf
@@ -44,12 +46,14 @@ check8bitCPU:
 
 ; Identification of an IDE device.
 ; Input:
-;   AX - IDE Interface Base Address
-;   BX - IDE Interface Controll Address
-;   CL - Master/Slave
+;     AX - IDE Interface Base Address
+;     BX - IDE Interface Controll Address
+;     CL - Master/Slave
 ; Output
-;   AL - 0 = success; 1 = error
-;   IDE_DEVICE_DATA - is filled
+;     AL - 0 = success; 1 = error
+;     IDE_DEVICE_DATA - is filled
+; Preserves:
+;     FLAGS, DX, SI, DI, DS
 ; ---------------------------------------------------------------------------
 identifyDevice:
 	push bp
@@ -62,14 +66,13 @@ identifyDevice:
 	push si
 	push di
 	push ds
-	push es
 
 	mov word [bp-2],ax		; IDE Interface Base Address
 	mov word [bp-4],bx		; IDE Interface Controll Address
 	mov word [bp-6],cx		; Master/Slave
 
 	xor ax,ax
-	mov ds,ax			; DS = 0000h
+	mov ds,ax			; DS:SI = 0000h:SI
 
 .wait400ns:
 	mov dx,[bp-4]			; IDE Interface Control Address
@@ -150,11 +153,10 @@ identifyDevice:
 	mov dx,[bp-2]			; IDE Interface Base Address
 	add dx,DATA_REGISTER
 
-	mov ax,cs
-	mov es,ax			; ES:DI = CS:IDE_DEVICE_DATA
-
 	mov di,IDE_DEVICE_DATA
 	mov cx,256
+
+	; TODO : minimize
 
 	cld
 
@@ -169,9 +171,6 @@ identifyDevice:
 	jmp .exit
 
 .clearIDEDeviceData:
-	mov ax,cs
-	mov es,ax			; ES:DI = CS:IDE_DEVICE_DATA
-
 	mov di,IDE_DEVICE_DATA
 	mov ax,00h
 	mov cx,256
@@ -185,7 +184,6 @@ identifyDevice:
 	mov al,1			; assume error
 
 .exit:
-	pop es
 	pop ds
 	pop di
 	pop si
@@ -199,19 +197,20 @@ identifyDevice:
 
 ; Identification of an IDE device.
 ; Input:
-;   AX - IDE Interface Base Address
-;   BX - IDE Interface Controll Address
-;   CL - Master/Slave
+;     AX - IDE Interface Base Address
+;     BX - IDE Interface Controll Address
+;     CL - Master/Slave
 ; Output
-;   AL - 0 = success; 1 = error
-;   IDE_DEVICE_DATA - is filled
+;     AL - 0 = success; 1 = error
+;     IDE_DEVICE_DATA - is filled
+; Preserves:
+;     DS
 ; ---------------------------------------------------------------------------
 processIDEDeviceData:
-	push si
+	; TODO : is DS required?
 	push ds
-
-	mov ax,cs
-	mov ds,ax			; DS:SI = CS:SI
+	push cs
+	pop ds				; DS:SI = CS:SI
 
 	mov si,IDE_DEVICE_DATA
 
@@ -230,45 +229,43 @@ processIDEDeviceData:
 
 	mov word [IDE_DEVICE_WPCOMP],WPCOMP_VALUE
 
+	cld
+
+.fillSerial:
+	add si,6
+	mov di,IDE_DEVICE_SERIAL
+
+	mov cx,10			; read 20 characters (10 words)
+	call copyWordsExchangeBytes
+
+.fillRevision:
+	add si,6
+	mov di,IDE_DEVICE_REVISION
+
+	mov cx,4			; read 8 characters (4 words)
+	call copyWordsExchangeBytes
+
+.fillModel:
+	mov di,IDE_DEVICE_MODEL
+
+	mov cx,10			; read 40 characters (20 words)
+	call copyWordsExchangeBytes
+
 	pop ds
-	pop si
 
 	ret
 
-; Autodetection of an IDE device.
+; Copies a number of words from SI to DI. Exchanges high and low bytes.
 ; Input:
-;   AX - IDE Interface Base Address
-;   BX - IDE Interface Controll Address
-;   CL - Master/Slave
+;     SI - source strig
+;     DI - destination string
+;     CX - number of words
 ; Output
-;   none
+;     none
+; Preserves:
+;     none
 ; ---------------------------------------------------------------------------
-autodetectDevice:
-	push si
-	push di
-	push ds
-	push es
-
-	call identifyDevice
-
-	or al,al
-	jnz .detectNone
-
-	mov ax,cs
-	mov ds,ax			; DS:SI = CS:DS
-	mov es,ax			; ES:DS = CS:DS
-
-	; TODO : Refactor this code and continue the implementation.
-
-.printATAInformation:
-	mov si,IDE_DEVICE_DATA
-	add si,54
-
-	mov di,IDE_DEVICE_MODEL
-
-	mov cx,10			; read 20 characters (10 words)
-
-	cld
+copyWordsExchangeBytes:
 
 .nextByte:
 	lodsw
@@ -279,6 +276,24 @@ autodetectDevice:
 
 	xor al,al			; null-terminated string
 	stosb
+
+	ret
+
+; Autodetection of an IDE device.
+; Input:
+;     AX - IDE Interface Base Address
+;     BX - IDE Interface Controll Address
+;     CL - Master/Slave
+; Output
+;     none
+; Preserves:
+;     none
+; ---------------------------------------------------------------------------
+autodetectDevice:
+	call identifyDevice
+
+	or al,al
+	jnz .detectNone
 
 	mov ah,HIGHLIGHT_TEXT_COLOR
 	mov si,IDE_DEVICE_MODEL
@@ -294,19 +309,4 @@ autodetectDevice:
 .exit:
 	call CRLF
 
-	pop es
-	pop ds
-	pop di
-	pop si
-
 	ret
-
-section .bss
-	IDE_DEVICE_DATA			RESB	256
-
-	IDE_DEVICE_MODEL		RESB	21
-	IDE_DEVICE_CYLINDERS		RESW	1
-	IDE_DEVICE_HEADS		RESW	1
-	IDE_DEVICE_SECTORS		RESW	1
-	IDE_DEVICE_WPCOMP		RESW	1
-	IDE_DEVICE_LDZONE		RESW	1

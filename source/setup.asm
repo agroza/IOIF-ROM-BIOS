@@ -11,28 +11,18 @@ section .text
 
 ; Draws the I/OIF ROM BIOS SETUP Program text-mode interface.
 ; Input:
-;   none
+;     none
 ; Output:
-;   none
+;     none
+; Preserves:
+;     none
 ; ---------------------------------------------------------------------------
 drawSetupTUI:
-	xor dx,dx			; first row, first column
-	call moveCursor
-
-	mov ah,06h			; scroll up window
-	mov al,VIDEO_ROW_COUNT		; by screen height
-	mov bh,BIOS_TEXT_COLOR		; attribute to pass to function 06h
-	xor cx,cx			; row,column = 0,0
-	mov dh,VIDEO_ROW_COUNT-1	; last row
-	mov dl,VIDEO_COLUMN_COUNT-1	; last column
-	int 10h
-
-.drawMainFrame:
 	mov ah,BIOS_TEXT_COLOR
 
 .drawHorizontalFrames:
 	mov al,0CDh			; horizontal frame
-	mov cx,VIDEO_COLUMN_COUNT-2
+	mov cx,VIDEO_COLUMN_COUNT - 2
 
 	mov dl,1			; first column
 
@@ -42,13 +32,16 @@ drawSetupTUI:
 	mov dh,3			; row
 	call directWriteChar
 
-	mov dh,VIDEO_ROW_COUNT-1	; row
+	mov dh,VIDEO_ROW_COUNT - 1	; row
 	call directWriteChar
 
 	mov dh,10			; row
 	call directWriteChar
 
-	mov dh,VIDEO_ROW_COUNT-1	; row
+	mov dh,VIDEO_ROW_COUNT - 3	; row
+	call directWriteChar
+
+	mov dh,VIDEO_ROW_COUNT - 1	; row
 	call directWriteChar
 
 .drawVerticalFrames:
@@ -56,7 +49,7 @@ drawSetupTUI:
 	mov cx,1			; write one time
 
 .drawLeftFrame:
-	mov dh,VIDEO_ROW_COUNT-2
+	mov dh,VIDEO_ROW_COUNT - 2
 	xor dl,dl			; column
 
 .1:
@@ -66,8 +59,8 @@ drawSetupTUI:
 	jae .1
 
 .drawRightFrame:
-	mov dh,VIDEO_ROW_COUNT-2
-	mov dl,VIDEO_COLUMN_COUNT-1	; column
+	mov dh,VIDEO_ROW_COUNT - 2
+	mov dl,VIDEO_COLUMN_COUNT - 1	; column
 
 .2:
 	call directWriteChar
@@ -84,72 +77,66 @@ drawSetupTUI:
 
 	mov al,0BBh			; top right of frame
 	xor dh,dh
-	mov dl,VIDEO_COLUMN_COUNT-1	; top-right = 0,79
-	call directWriteChar
-
-	mov al,0CCh			; intermediary upper-left of frame
-	mov dh,3
-	xor dl,dl			; row,column = 3,0
-	call directWriteChar
-
-	mov al,0B9h			; intermediary upper-right of frame
-	mov dh,3
-	mov dl,VIDEO_COLUMN_COUNT-1	; top-right = 3,79
-	call directWriteChar
-
-	mov al,0CCh			; intermediary middle-left of frame
-	mov dh,10
-	xor dl,dl			; row,column = 10,0
-	call directWriteChar
-
-	mov al,0B9h			; intermediary middle-right of frame
-	mov dh,10
-	mov dl,VIDEO_COLUMN_COUNT-1	; top-right = 10,79
+	mov dl,VIDEO_COLUMN_COUNT - 1	; top-right = 0,79
 	call directWriteChar
 
 	mov al,0C8h			; bottom left of frame
-	mov dh,VIDEO_ROW_COUNT-1
+	mov dh,VIDEO_ROW_COUNT - 1
 	xor dl,dl			; bottom-left = 24,0
 	call directWriteChar
 
 	mov al,0BCh			; bottom right of frame
-	mov dh,VIDEO_ROW_COUNT-1
-	mov dl,VIDEO_COLUMN_COUNT-1	; bottom-right = 24,79
+	mov dh,VIDEO_ROW_COUNT - 1
+	mov dl,VIDEO_COLUMN_COUNT - 1	; bottom-right = 24,79
+	call directWriteChar
+
+.drawIntermediaryLeftCorners:
+	mov al,0CCh			; intermediary left of frame
+	xor dl,dl			; column
+
+	mov dh,3			; intermediary top-left
+	call directWriteChar
+
+	mov dh,10			; intermediary middle-left
+	call directWriteChar
+
+	mov dh,VIDEO_ROW_COUNT - 3	; intermediary bottom-left of frame
+	call directWriteChar
+
+.drawIntermediaryRightCorners:
+	mov al,0B9h			; intermediary upper-right of frame
+	mov dl,VIDEO_COLUMN_COUNT - 1	; column
+
+	mov dh,3
+	call directWriteChar
+
+	mov dh,10			; intermediary middle-right of frame
+	call directWriteChar
+
+	mov dh,VIDEO_ROW_COUNT - 3	; intermediary bottom-right of frame
 	call directWriteChar
 
 .drawText:
 	mov dh,1			; row
 	mov dl,2			; column
-	call moveCursor
 
-	mov ah,BIOS_TEXT_COLOR
 	mov si,sProgram
-	call directWrite
+	call directWriteAt
 
 	mov dl,2			; column
-	call moveCursor
-
-	mov ah,BIOS_TEXT_COLOR
 	mov si,sCopyright
-	call directWrite
+	call directWriteAt
 
 	mov dh,4			; row
 	mov dl,2			; column
-	call moveCursor
-
-	mov ah,BIOS_TEXT_COLOR
 	mov si,sIDEDevices
-	call directWrite
+	call directWriteAt
 
 	mov dh,4			; row
 	mov dl,25			; column
-	call moveCursor
-
-	mov ah,BIOS_TEXT_COLOR
 	mov si,sIDEParameters
-	call directWrite
+	call directWriteAt
 
-	mov ah,BIOS_TEXT_COLOR
 	mov al,0C4h			; top left of frame
 	mov cx,76			; write 76 times
 	inc dh				; row
@@ -158,84 +145,65 @@ drawSetupTUI:
 
 	inc dh				; row
 	mov dl,2			; column
-	call moveCursor
-
-	mov ah,BIOS_TEXT_COLOR
 	mov si,sIDEDevicePM
-	call directWrite
+	call directWriteAt
 
 	inc dh				; row
 	mov dl,2			; column
-	call moveCursor
-
-	mov ah,BIOS_TEXT_COLOR
 	mov si,sIDEDevicePS
-	call directWrite
+	call directWriteAt
 
 	inc dh				; row
 	mov dl,2			; column
-	call moveCursor
-
-	mov ah,BIOS_TEXT_COLOR
 	mov si,sIDEDeviceSS
-	call directWrite
+	call directWriteAt
 
 	inc dh				; row
 	mov dl,2			; column
-	call moveCursor
-
-	mov ah,BIOS_TEXT_COLOR
 	mov si,sIDEDeviceSS
-	call directWrite
-
-	mov dh,23			; row
-	mov dl,16			; column
-	call moveCursor
-
-	mov ah,BIOS_HIGHLIGHT_TEXT_COLOR
-	mov si,sSetupUsage
-	call directWrite
+	call directWriteAt
 
 .drawMainMenu:
 	mov dh,MAIN_MENU_EDIT_PARAMETERS
-	mov dl,2			; column
-	call moveCursor
-
-	mov ah,BIOS_TEXT_COLOR
+	mov dl,MAIN_MENU_REGION_OFFSET + 1
 	mov si,sMainMenuDefineParameters
-	call directWrite
+	call directWriteAt
 
 	mov dh,MAIN_MENU_AUTODETECT_ALL
-	mov dl,2			; column
-	call moveCursor
-
-	mov ah,BIOS_TEXT_COLOR
+	mov dl,MAIN_MENU_REGION_OFFSET + 1
 	mov si,sMainMenuAutodetectAll
-	call directWrite
+	call directWriteAt
+
+	mov dh,MAIN_MENU_DEVICE_INFORMATION
+	mov dl,MAIN_MENU_REGION_OFFSET + 1
+	mov si,sMainMenuDeviceInformation
+	call directWriteAt
 
 	mov dh,MAIN_MENU_EXIT
-	mov dl,2			; column
-	call moveCursor
-
-	mov ah,BIOS_TEXT_COLOR
+	mov dl,MAIN_MENU_REGION_OFFSET + 1
 	mov si,sMainMenuExit
-	call directWrite
+	call directWriteAt
 
 	mov dh,MAIN_MENU_SAVE_AND_EXIT
-	mov dl,2			; column
-	call moveCursor
-
-	mov ah,BIOS_TEXT_COLOR
+	mov dl,MAIN_MENU_REGION_OFFSET + 1
 	mov si,sMainMenuSaveAndExit
-	call directWrite
+	call directWriteAt
+
+	mov dh,23			; row
+	mov dl,16			; column
+	mov ah,BIOS_HIGHLIGHT_TEXT_COLOR
+	mov si,sSetupUsage
+	call directWriteAt
 
 	ret
 
 ; Writes a line of IDE Device parameters and computes Device Size.
 ; Input:
-;   DH - row
+;     DH - row
 ; Output:
-;   none
+;     none
+; Preserves:
+;     FLAGS, AX, BX, CX, DX
 ; ---------------------------------------------------------------------------
 drawParameters:
 	push bp
@@ -248,15 +216,13 @@ drawParameters:
 	push dx
 
 	mov ah,BIOS_TEXT_COLOR
+
 	mov al,20h			; empty space
-	mov cx,53			; clear entire line
-	mov dl,IDE_DEVICE_TYPE_OFFSET
+	mov cx,IDE_DEVICE_REGION_WIDTH
+	mov dl,IDE_DEVICE_REGION_TYPE_OFFSET
 	call directWriteChar
 
-	mov dl,IDE_DEVICE_TYPE_OFFSET
-	call moveCursor
-
-	mov ah,BIOS_TEXT_COLOR
+	mov dl,IDE_DEVICE_REGION_TYPE_OFFSET
 
 	cmp word [IDE_DEVICE_CYLINDERS],0
 	jnz .selectUser
@@ -273,39 +239,39 @@ drawParameters:
 	mov si,sIDEDeviceTypeAuto
 
 .writeDeviceType:
-	call directWrite
+	call directWriteAt
 
-	mov dl,IDE_DEVICE_CYLINDERS_OFFSET
+	mov dl,IDE_DEVICE_REGION_CYLINDERS_OFFSET
 	call moveCursor
 
 	mov ax,[IDE_DEVICE_CYLINDERS]
 	call print_dec
 
-	mov dl,IDE_DEVICE_HEADS_OFFSET
+	mov dl,IDE_DEVICE_REGION_HEADS_OFFSET
 	call moveCursor
 
 	mov ax,[IDE_DEVICE_HEADS]
 	call print_dec
 
-	mov dl,IDE_DEVICE_SECTORS_OFFSET
+	mov dl,IDE_DEVICE_REGION_SECTORS_OFFSET
 	call moveCursor
 
 	mov ax,[IDE_DEVICE_SECTORS]
 	call print_dec
 
-	mov dl,IDE_DEVICE_WPCOMP_OFFSET
+	mov dl,IDE_DEVICE_REGION_WPCOMP_OFFSET
 	call moveCursor
 
 	mov ax,[IDE_DEVICE_WPCOMP]
 	call print_dec
 
-	mov dl,IDE_DEVICE_LDZONE_OFFSET
+	mov dl,IDE_DEVICE_REGION_LDZONE_OFFSET
 	call moveCursor
 
 	mov ax,[IDE_DEVICE_LDZONE]
 	call print_dec
 
-	mov dl,IDE_DEVICE_SIZE_OFFSET
+	mov dl,IDE_DEVICE_REGION_SIZE_OFFSET
 	call moveCursor
 
 	push dx
@@ -323,12 +289,10 @@ drawParameters:
 
 	pop dx
 
-	mov dl,IDE_DEVICE_MODE_OFFSET
-	call moveCursor
-
+	mov dl,IDE_DEVICE_REGION_MODE_OFFSET
 	mov ah,BIOS_TEXT_COLOR
 	mov si,sIDEDeviceModeCHS
-	call directWrite
+	call directWriteAt
 
 	pop dx
 	pop cx
@@ -343,38 +307,36 @@ drawParameters:
 
 ; Highlights the entire Parameters region during IDE Device detection.
 ; Input:
-;   none
+;     none
 ; Output:
-;   none
+;     none
+; Preserves:
+;     none
 ; ---------------------------------------------------------------------------
 highlightDetection:
 	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
 	xor ch,ch
-	mov cl,53
-	mov dl,IDE_DEVICE_TYPE_OFFSET
+	mov cl,IDE_DEVICE_REGION_WIDTH
+	mov dl,IDE_DEVICE_REGION_TYPE_OFFSET
 	call highlightRegion
 
 	ret
 
 ; Detects all IDE Devices and fills their parameters.
 ; Input:
-;   none
+;     none
 ; Output:
-;   none
+;     none
+; Preserves:
+;     AX, BX, CX, DX
 ; ---------------------------------------------------------------------------
 detectIDEDevicesParameters:
 	push ax
 	push bx
 	push cx
 	push dx
-	push ds
 
-	; TODO : decide where to put this line
-
-	mov ax,cs
-	mov ds,ax			; DS:SI = CS:IDE_DEVICE_DATA
-
-	mov dh,IDE_DEVICE_PRIMARY_MASTER
+	mov dh,IDE_DEVICES_REGION_PRIMARY_MASTER
 	call highlightDetection
 
 	mov ax,PRIMARY_IDE_INTERFACE
@@ -384,7 +346,7 @@ detectIDEDevicesParameters:
 
 	call drawParameters
 
-	mov dh,IDE_DEVICE_PRIMARY_SLAVE
+	mov dh,IDE_DEVICES_REGION_PRIMARY_SLAVE
 	call highlightDetection
 
 	mov ax,PRIMARY_IDE_INTERFACE
@@ -393,8 +355,8 @@ detectIDEDevicesParameters:
 	call identifyDevice
 
 	call drawParameters
-
-	mov dh,IDE_DEVICE_SECONDARY_MASTER
+%ifdef comment
+	mov dh,IDE_DEVICES_REGION_SECONDARY_MASTER
 	call highlightDetection
 
 	mov ax,SECONDARY_IDE_INTERFACE
@@ -404,7 +366,7 @@ detectIDEDevicesParameters:
 
 	call drawParameters
 
-	mov dh,IDE_DEVICE_SECONDARY_SLAVE
+	mov dh,IDE_DEVICES_REGION_SECONDARY_SLAVE
 	call highlightDetection
 
 	mov ax,SECONDARY_IDE_INTERFACE
@@ -413,8 +375,7 @@ detectIDEDevicesParameters:
 	call identifyDevice
 
 	call drawParameters
-
-	pop ds
+%endif
 	pop dx
 	pop cx
 	pop bx
@@ -422,11 +383,49 @@ detectIDEDevicesParameters:
 
 	ret
 
+; Allows editing of one IDE Device Parameter.
+; Input:
+;     none
+; Output:
+;     none
+; Preserves:
+;     AX
+; ---------------------------------------------------------------------------
+editIDEDeviceParameter:
+	push ax
+
+.editParameterLoop:
+	mov ah,01h			; read the state of the keyboard buffer
+	int 16h
+	jz .editParameterLoop
+
+	mov ah,00h			; read key press
+	int 16h
+
+	cmp ax,KBD_ESC
+	je .exit
+	cmp ax,KBD_ENTER
+	je .exitSave
+
+	; TODO : Allow entering of numbers.
+
+	jmp .editParameterLoop
+
+.exitSave:
+	; TODO : Save the value.
+
+.exit:
+	pop ax
+
+	ret
+
 ; Allows editing of the IDE Devices Parameters.
 ; Input:
-;   none
+;     none
 ; Output:
-;   none
+;     none
+; Preserves:
+;     AX, BX, CX, DX, SI, DI
 ; ---------------------------------------------------------------------------
 editIDEDevicesParameters:
 	push ax
@@ -435,13 +434,10 @@ editIDEDevicesParameters:
 	push dx
 	push si
 	push di
-	push ds
 
-	mov ax,cs
-	mov ds,ax
-
+.selectFirstItem:
 	xor bh,bh			; initial row
-	mov bl,IDE_DEVICES_REGIONS_TOP
+	mov bl,IDE_DEVICES_REGION_TOP
 	mov si,IDE_PARAMETERS_REGIONS
 
 	mov ah,BIOS_SELECTED_COLOR
@@ -475,11 +471,18 @@ editIDEDevicesParameters:
 	jmp .editParametersLoop
 
 .executeAction:
+	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
+	call highlightRegion
+
+	call editIDEDeviceParameter
+
+	mov ah,BIOS_SELECTED_COLOR
+	call highlightRegion
 
 	jmp .editParametersLoop
 
 .moveUp:
-	cmp bl,IDE_DEVICES_REGIONS_TOP
+	cmp bl,IDE_DEVICES_REGION_TOP
 	je .editParametersLoop
 	dec bl
 
@@ -498,7 +501,7 @@ editIDEDevicesParameters:
 	jmp .editParametersLoop
 
 .moveDown:
-	cmp bl,IDE_DEVICES_REGIONS_BOTTOM
+	cmp bl,IDE_DEVICES_REGION_BOTTOM
 	je .editParametersLoop
 	inc bl
 
@@ -538,7 +541,7 @@ editIDEDevicesParameters:
 	jmp .editParametersLoop
 
 .moveRight:
-	cmp bh,IDE_DEVICES_REGIONS_COUNT-1
+	cmp bh,IDE_DEVICE_REGION_COUNT - 1
 	je .editParametersLoop
 	inc bh
 
@@ -562,7 +565,6 @@ editIDEDevicesParameters:
 	mov ah,BIOS_TEXT_COLOR		; destroy any possible selection
 	call highlightRegion
 
-	pop ds
 	pop di
 	pop si
 	pop dx
@@ -572,40 +574,238 @@ editIDEDevicesParameters:
 
 	ret
 
-; Clears the screen and sets text color and attribute to default.
+; Displays information about the selected IDE Device.
 ; Input:
-;   none
+;     BL - device ID
 ; Output:
-;   none
+;     none
+; Preserves:
+;     BX, CX, DX
 ; ---------------------------------------------------------------------------
-restoreViewMode:
-	xor dx,dx			; row,column = 0,0
-	call moveCursor
+deviceInformation:
+	push bx
+	push cx
+	push dx
+
+	; TODO : put bx to use
+
+	mov ah,BIOS_TEXT_COLOR
+
+	mov dh,IDE_DEVICE_INFO_TOP
+	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
+	mov si,IDE_DEVICE_MODEL
+	call directWriteAt
+
+	inc dh				; row
+	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
+	mov si,IDE_DEVICE_SERIAL
+	call directWriteAt
+
+	inc dh				; row
+	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
+	mov si,IDE_DEVICE_REVISION
+	call directWriteAt
+
+	inc dh				; row
+	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
+	mov si,sIDEDeviceFeaturesList
+	call directWriteAt
+
+	; TODO : Extract constants separately.
+
+.highlightFeatures:
+	mov ah,IDE_FEATURE_PRESENT
+	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
+	mov cx,3 ; lba
+	call highlightRegion
+
+	mov ah,IDE_FEATURE_ABSENT
+	add dl,5
+	mov cx,3 ; dma
+	call highlightRegion
+
+	mov ah,IDE_FEATURE_PRESENT
+	add dl,5
+	mov cx,6 ; iordy
+	call highlightRegion
+
+	mov ah,IDE_FEATURE_POSSIBLE
+	add dl,7
+	mov cx,11 ; disableable
+	call highlightRegion
+
+	pop dx
+	pop cx
+	pop bx
+
+	ret
+
+; Allows viewing of extended IDE Devices Information.
+; Input:
+;     none
+; Output:
+;     none
+; Preserves:
+;     DX
+; ---------------------------------------------------------------------------
+viewIDEDevicesInformation:
+	push bx
+	push cx
+	push dx
+
+	mov ah,BIOS_TEXT_COLOR
+
+.drawVerticalFrames:
+	mov al,0B0h			; vertical frame
+	mov cx,1			; write one time
+
+.drawLeftFrame:
+	mov dh,21
+	mov dl,23			; column
+
+.1:
+	call directWriteChar
+	dec dh
+	cmp dh,IDE_DEVICE_INFO_TOP
+	jae .1
+
+.drawText:
+	mov dh,IDE_DEVICE_INFO_TOP
+	mov dl,IDE_DEVICE_INFO_KEY_OFFSET
+	mov si,sIDEDeviceModel
+	call directWriteAt
+
+	inc dh				; row
+	mov dl,IDE_DEVICE_INFO_KEY_OFFSET
+	mov si,sIDEDeviceSerial
+	call directWriteAt
+
+	inc dh				; row
+	mov dl,IDE_DEVICE_INFO_KEY_OFFSET
+	mov si,sIDEDeviceRevision
+	call directWriteAt
+
+	inc dh				; row
+	mov dl,IDE_DEVICE_INFO_KEY_OFFSET
+	mov si,sIDEDeviceFeatures
+	call directWriteAt
+
+.selectFirstItem:
+	xor bh,bh			; initial row
+	mov bl,IDE_DEVICES_REGION_TOP
+
+	mov ah,BIOS_SELECTED_COLOR
+	xor ch,ch
+	mov cl,IDE_DEVICES_REGION_LENGTH
+	mov dh,bl			; row
+	mov dl,IDE_DEVICES_REGION_OFFSET - 1
+	call highlightRegion
+
+.ideDevicesMenuLoop:
+	mov ah,01h			; read the state of the keyboard buffer
+	int 16h
+	jz .ideDevicesMenuLoop
+
+	mov ah,00h			; read key press
+	int 16h
+
+	cmp ax,KBD_ESC
+	je .exit
+	cmp ax,KBD_ENTER
+	je .executeAction
+	cmp ax,KBD_UP
+	je .moveUp
+	cmp ax,KBD_DOWN
+	je .moveDown
+
+	jmp .ideDevicesMenuLoop
+
+.executeAction:
+	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
+	call highlightRegion
+
+	push cx
+	mov cx,1
+	call delay
+	pop cx
+
+	mov ah,BIOS_SELECTED_COLOR
+	call highlightRegion
+
+	call deviceInformation
+
+	jmp .ideDevicesMenuLoop
+
+.moveUp:
+	cmp bl,IDE_DEVICES_REGION_TOP
+	je .ideDevicesMenuLoop
+	dec bl
+
+	mov ah,BIOS_SELECTED_COLOR
+	mov dh,bl			; row
+	call highlightRegion
+
+	mov ah,BIOS_TEXT_COLOR
+	inc dh				; restore previous row
+	call highlightRegion
+	dec dh				; so that we can clear at exit
+
+	jmp .ideDevicesMenuLoop
+
+.moveDown:
+	cmp bl,IDE_DEVICES_REGION_BOTTOM
+	je .ideDevicesMenuLoop
+	inc bl
+
+	mov ah,BIOS_SELECTED_COLOR
+	mov dh,bl			; row
+	call highlightRegion
+
+	mov ah,BIOS_TEXT_COLOR
+	dec dh				; restore previous row
+	call highlightRegion
+	inc dh				; so that we can clear at exit
+
+	jmp .ideDevicesMenuLoop
+
+.exit:
+	mov ah,BIOS_TEXT_COLOR		; destroy any possible selection
+	call highlightRegion
 
 	mov ah,06h			; scroll up window
 	mov al,VIDEO_ROW_COUNT		; by screen height
-	mov bh,NORMAL_TEXT_COLOR		; attribute to pass to function 06h
-	xor cx,cx			; row,column = 0,0
-	mov dh,VIDEO_ROW_COUNT-1	; last row
-	mov dl,VIDEO_COLUMN_COUNT-1	; last column
+	mov bh,BIOS_TEXT_COLOR		; attribute to pass to function 06h
+	mov ch,11			; row
+	mov cl,23			; column
+	mov dh,VIDEO_ROW_COUNT - 4	; last row - 1
+	mov dl,VIDEO_COLUMN_COUNT - 2	; last column - 1
 	int 10h
+
+	pop dx
+	pop cx
+	pop bx
 
 	ret
 
 ; Enter the I/OIF ROM BIOS SETUP Program.
 ; Input:
-;   none
+;     none
 ; Output:
-;   none
+;     none
+; Preserves:
+;     none
 ; ---------------------------------------------------------------------------
 enterSetup:
-	push ds
-
-	mov ax,cs
-	mov ds,ax			; DS:SI = CS:IDE_DEVICE_DATA
-
 	mov ah,01h			; set text-mode cursor shape
 	mov cx,2607h			; hide cursor
+	int 10h
+
+	mov ah,06h			; scroll up window
+	mov al,VIDEO_ROW_COUNT		; by screen height
+	mov bh,BIOS_TEXT_COLOR		; attribute to pass to function 06h
+	xor cx,cx			; row,column = 0,0
+	mov dh,VIDEO_ROW_COUNT - 1	; last row
+	mov dl,VIDEO_COLUMN_COUNT - 1	; last column
 	int 10h
 
 	call drawSetupTUI
@@ -614,21 +814,28 @@ enterSetup:
 
 	call readCMOSData
 
-	mov dh,IDE_DEVICE_PRIMARY_MASTER
+	mov dh,IDE_DEVICES_REGION_PRIMARY_MASTER
 	call drawParameters
 
-	mov dh,IDE_DEVICE_PRIMARY_SLAVE
+	mov dh,IDE_DEVICES_REGION_PRIMARY_SLAVE
 	call drawParameters
 
-	mov dh,IDE_DEVICE_SECONDARY_MASTER
+	mov dh,IDE_DEVICES_REGION_SECONDARY_MASTER
 	call drawParameters
 
-	mov dh,IDE_DEVICE_SECONDARY_SLAVE
+	mov dh,IDE_DEVICES_REGION_SECONDARY_SLAVE
 	call drawParameters
 
 .partialRedraw:
+	mov dh,VIDEO_ROW_COUNT - 2	; row
+	mov dl,2			; column
+	mov ah,BIOS_HIGHLIGHT_TEXT_COLOR
+	mov si,sSetupESCExit
+	call directWriteAt
+
+.selectFirstItem:
 	xor bh,bh			; initial row
-	mov bl,MAIN_MENU_REGIONS_TOP
+	mov bl,MAIN_MENU_REGION_TOP
 
 	mov ah,BIOS_SELECTED_COLOR
 	xor ch,ch
@@ -636,14 +843,6 @@ enterSetup:
 	mov dh,bl			; row
 	mov dl,MAIN_MENU_REGION_OFFSET
 	call highlightRegion
-
-	mov dh,VIDEO_ROW_COUNT-2	; row
-	mov dl,2			; column
-	call moveCursor
-
-	mov ah,BIOS_HIGHLIGHT_TEXT_COLOR
-	mov si,sSetupESCExit
-	call directWrite
 
 .mainMenuLoop:
 	mov ah,01h			; read the state of the keyboard buffer
@@ -669,21 +868,20 @@ enterSetup:
 	je .mainMenuEditParameters
 	cmp bl,MAIN_MENU_AUTODETECT_ALL
 	je .mainMenuAutodetectAll
+	cmp bl,MAIN_MENU_DEVICE_INFORMATION
+	je .mainMenuDeviceInformation
 	cmp bl,MAIN_MENU_EXIT
 	je .exitSetup
 
 	jmp .mainMenuLoop
 
 .moveUp:
-	cmp bl,MAIN_MENU_REGIONS_TOP
+	cmp bl,MAIN_MENU_REGION_TOP
 	je .mainMenuLoop
 	dec bl
 
 	mov ah,BIOS_SELECTED_COLOR
-	xor ch,ch
-	mov cl,MAIN_MENU_REGION_LENGTH
 	mov dh,bl			; row
-	mov dl,MAIN_MENU_REGION_OFFSET
 	call highlightRegion
 
 	mov ah,BIOS_TEXT_COLOR
@@ -694,15 +892,12 @@ enterSetup:
 	jmp .mainMenuLoop
 
 .moveDown:
-	cmp bl,MAIN_MENU_REGIONS_BOTTOM
+	cmp bl,MAIN_MENU_REGION_BOTTOM
 	je .mainMenuLoop
 	inc bl
 
 	mov ah,BIOS_SELECTED_COLOR
-	xor ch,ch
-	mov cl,MAIN_MENU_REGION_LENGTH
 	mov dh,bl			; row
-	mov dl,MAIN_MENU_REGION_OFFSET
 	call highlightRegion
 
 	mov ah,BIOS_TEXT_COLOR
@@ -722,19 +917,20 @@ enterSetup:
 
 	jmp .mainMenuLoop
 
+.mainMenuDeviceInformation:
+	call viewIDEDevicesInformation
+
+	jmp .mainMenuLoop
+
 .exitSetup:
 	mov ah,BIOS_TEXT_COLOR		; destroy any possible selection
-	mov dh,bl			; row
-	mov dl,MAIN_MENU_REGION_OFFSET
 	call highlightRegion
 
-	mov dh,VIDEO_ROW_COUNT-2	; row
+	mov dh,VIDEO_ROW_COUNT - 2	; row
 	mov dl,2			; column
-	call moveCursor
-
-	mov ah,BIOS_QUESTION_TEXT_COLOR
+	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
 	mov si,sSetupExit
-	call directWrite
+	call directWriteAt
 
 .exitMenuLoop:
 	mov ah,01h			; read the state of the keyboard buffer
@@ -758,12 +954,19 @@ enterSetup:
 	jmp .exitMenuLoop
 
 .exit:
-	call restoreViewMode
+	xor dx,dx			; row,column = 0,0
+	call moveCursor
+
+	mov ah,06h			; scroll up window
+	mov al,VIDEO_ROW_COUNT		; by screen height
+	mov bh,NORMAL_TEXT_COLOR	; attribute to pass to function 06h
+	xor cx,cx			; row,column = 0,0
+	mov dh,VIDEO_ROW_COUNT - 1	; last row
+	mov dl,VIDEO_COLUMN_COUNT - 1	; last column
+	int 10h
 
 	mov ah,01h			; set text-mode cursor shape
 	mov cx,0607h			; enable cursor
 	int 10h
-
-	pop ds
 
 	ret

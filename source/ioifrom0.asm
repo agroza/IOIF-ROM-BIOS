@@ -18,7 +18,7 @@
 %ifdef ROM
 	org ROMSTART
 %else
-	org 100h
+	org DOSSTART
 %endif
 
 section .text
@@ -52,11 +52,13 @@ start:
 	push dx
 	push si
 	push ds
+	push es
 
 	xor ax,ax
-	mov ds,ax
 	mov ss,ax
-	mov es,ax
+	mov ax,cs
+	mov ds,ax			; DS:SI = CS:SI for entire program
+	mov es,ax			; ES:DI = CS:DI for entire program
 
 	mov ah,HIGHLIGHT_TEXT_COLOR
 	mov si,sProgram
@@ -75,31 +77,6 @@ start:
 	jmp .exit
 
 .continue:
-	call processSetup
-
-	call autodetectDevices
-
-.exit:
-	call CRLF
-
-	pop ds
-	pop si
-	pop dx
-	pop cx
-	pop bx
-	pop ax
-
-%ifdef ROM
-	retf
-%else
-	xor al,al
-	mov ah,4Ch
-	int 21h
-%endif
-
-; I/OIF ROM BIOS SETUP Program trigger.
-; ---------------------------------------------------------------------------
-processSetup:
 	mov si,sPressDELKey
 	call directWrite
 
@@ -108,22 +85,17 @@ processSetup:
 
 	mov ah,01h			; read the state of the keyboard buffer
 	int 16h
-	jz .exit
+	jz .autodetectIDEDevices
 
 	mov ah,00h			; read key press
 	int 16h
 
 	cmp ax,KBD_DEL
-	jne .exit
+	jne .autodetectIDEDevices
 
 	call enterSetup
 
-.exit:
-	ret
-
-; Autodetection of IDE Devices.
-; ---------------------------------------------------------------------------
-autodetectDevices:
+.autodetectIDEDevices:
 	mov ah,NORMAL_TEXT_COLOR
 	mov si,sDetectingIDE
 	call directWrite
@@ -168,7 +140,24 @@ autodetectDevices:
 	mov cl,IDE_SLAVE_DEVICE
 	call autodetectDevice
 
-	ret
+.exit:
+	call CRLF
+
+	pop es
+	pop ds
+	pop si
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+
+%ifdef ROM
+	retf
+%else
+	xor al,al
+	mov ah,4Ch
+	int 21h
+%endif
 
 %ifdef ROM
 	TIMES (ROMSIZE-($-$$)-ROMSTART) DB 00h

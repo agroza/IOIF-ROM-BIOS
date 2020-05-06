@@ -11,10 +11,12 @@ section .text
 
 ; Moves the cursor to the specified row and column.
 ; Input:
-;   DH - row
-;   DL - column
+;     DH - row
+;     DL - column
 ; Output:
-;   none
+;     none
+; Preserves:
+;     none
 ; ---------------------------------------------------------------------------
 moveCursor:
 	mov ah,02h			; set cursor position
@@ -25,9 +27,11 @@ moveCursor:
 
 ; Advances the cursor to the next line, column 0.
 ; Input:
-;   none
+;     none
 ; Output:
-;   none
+;     none
+; Preserves:
+;     FLAGS, AX, BX, CX, DX
 ; ---------------------------------------------------------------------------
 CRLF:
 	pushf
@@ -72,14 +76,22 @@ CRLF:
 
 	ret
 
+calculatePosition:
+
+	; TODO : add code
+
+	ret
+
 ; Highlight a linear region directly in the VGA RAM.
 ; Input:
-;   AH - color attribute
-;   DH - row
-;   DL - column
-;   CX - number of characters
+;     AH - color attribute
+;     DH - row
+;     DL - column
+;     CX - number of characters
 ; Output:
-;   none
+;     none
+; Preserves:
+;     FLAGS, AX, BX, CX, DX, SI, DI, DS, ES
 ; ---------------------------------------------------------------------------
 highlightRegion:
 	push bp
@@ -96,8 +108,8 @@ highlightRegion:
 	push es
 
 	mov ax,VIDEO_RAM_SEGMENT
-	mov ds,ax
-	mov es,ax			; ES = 0B800h
+	mov ds,ax			; DS:SI = 0B800h:SI
+	mov es,ax			; ES:DI = 0B800h:DI
 
 	xor ah,ah
 	mov al,[bp-9]			; stored dh = row
@@ -138,13 +150,15 @@ highlightRegion:
 
 ; Writes a character directly to the VGA RAM.
 ; Input:
-;   AH - color attribute
-;   AL - character
-;   DH - row
-;   DL - column
-;   CX - number of characters
+;     AH - color attribute
+;     AL - character
+;     DH - row
+;     DL - column
+;     CX - number of characters
 ; Output:
-;   none
+;     none
+; Preserves:
+;     FLAGS, AX, BX, CX, DX, DI, ES
 ; ---------------------------------------------------------------------------
 directWriteChar:
 	push bp
@@ -159,7 +173,7 @@ directWriteChar:
 	push es
 
 	mov ax,VIDEO_RAM_SEGMENT
-	mov es,ax			; ES = 0B800h
+	mov es,ax			; ES:DI = 0B800h:DI
 
 	xor ah,ah
 	mov al,[bp-9]			; stored dh = row
@@ -194,10 +208,12 @@ directWriteChar:
 
 ; Writes a null-terminated string directly to the VGA RAM.
 ; Input:
-;   AH    - color attribute
-;   DS:SI - pointer to string
+;     AH    - color attribute
+;     DS:SI - pointer to string
 ; Output:
-;   none
+;     none
+; Preserves:
+;     FLAGS, AX, BX, CX, SI, DI, ES
 ; ---------------------------------------------------------------------------
 directWrite:
 	push bp
@@ -209,13 +225,10 @@ directWrite:
 	push cx
 	push si
 	push di
-	push ds
-	push cs
-	pop ds
 	push es
 
 	mov ax,VIDEO_RAM_SEGMENT
-	mov es,ax			; ES = 0B800h
+	mov es,ax			; ES:DI = 0B800h:SI
 
 	mov ah,03h			; get cursor position
 	xor bh,bh			; video page 0
@@ -298,7 +311,6 @@ directWrite:
 	call moveCursor
 
 	pop es
-	pop ds
 	pop di
 	pop si
 	pop cx
@@ -311,11 +323,34 @@ directWrite:
 
 	ret
 
+; Writes a null-terminated string directly to the VGA RAM at position: DH,DL.
+; Input:
+;     AH    - color attribute
+;     DH    - row
+;     DL    - column
+;     DS:SI - pointer to string
+; Output:
+;     none
+; Preserves:
+;     none
+; ---------------------------------------------------------------------------
+directWriteAt:
+	; TODO : It would be a good ideea to store DX. Might reduce code size.
+
+	push ax
+	call moveCursor
+	pop ax
+	call directWrite
+
+	ret
+
 ; Delay for a number of seconds using the System Timer.
 ; Input:
-;   CX - number of seconds
+;     CX - number of seconds
 ; Output:
-;   none
+;     none
+; Preserves:
+;     FLAGS, AX, BX, CX, DX, DS
 ; ---------------------------------------------------------------------------
 delay:
 	pushf
@@ -326,7 +361,7 @@ delay:
 	push ds
 
 	xor ax,ax
-	mov ds,ax
+	mov ds,ax			; DS:SI = 0000h:SI
 
 	mov ax,18			; 18 Hz
 	mul cx				; how many seconds
