@@ -33,7 +33,14 @@ sIDEDeviceTypeAuto		DB 'AUTO',0
 
 sIDEDeviceModeCHS		DB 'CHS',0
 
+sIDEDeviceModel			DB 'Model',0
+sIDEDeviceSerial		DB 'Serial',0
+sIDEDeviceRevision		DB 'Revision',0
+sIDEDeviceFeatures		DB 'Features',0
+sIDEDeviceFeaturesList		DB 'LBA  DMA  I/ORDY Disableable',0
+
 sMainMenuDefineParameters	DB 'DEFINE PARAMETERS',0
 sMainMenuAutodetectAll		DB 'AUTODETECT ALL',0
+sMainMenuDeviceInformation	DB 'DEVICE INFORMATION',0
 sMainMenuExit			DB 'EXIT',0
 sMainMenuSaveAndExit		DB 'SAVE & EXIT',0
