@@ -34,7 +34,7 @@ section .text
 
 	DB 0,'I/O-IF ROM #0',0
 
-%include ".\source\debug.asm"
+;%include ".\source\debug.asm"
 %include ".\source\routines.asm"
 %include ".\source\cmos.asm"
 %include ".\source\detect.asm"
@@ -90,7 +90,7 @@ start:
 	mov ah,00h			; read key press
 	int 16h
 
-	cmp ax,KBD_DEL
+	cmp ax,KEYBOARD_DEL
 	jne .autodetectIDEDevices
 
 	call enterSetup

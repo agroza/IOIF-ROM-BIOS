@@ -96,7 +96,7 @@ identifyDevice:
 .waitBSY:
 	in al,dx			; read
 	and al,STATUS_REGISTER_BSY
-	je .checkDRDY
+	jz .checkDRDY
 
 	mov ax,[46Ch]			; BIOS timer count is updated at 18.2 Hz
 	cmp ax,bx			; same timer count?
@@ -118,7 +118,7 @@ identifyDevice:
 .waitDRDY:
 	in al,dx			; read
 	and al,STATUS_REGISTER_DRDY
-	jne .sendIdentifyCommand
+	jnz .sendIdentifyCommand
 
 	mov ax,[46Ch]			; BIOS timer count is updated at 18.2 Hz
 	cmp ax,bx			; same timer count?
@@ -148,7 +148,7 @@ identifyDevice:
 .checkDRQ:
 	in al,dx
 	and al,STATUS_REGISTER_DRQ
-	je .checkDRQ
+	jz .checkDRQ
 
 	mov dx,[bp-2]			; IDE Interface Base Address
 	add dx,DATA_REGISTER
@@ -156,7 +156,7 @@ identifyDevice:
 	mov di,IDE_DEVICE_DATA
 	mov cx,256
 
-	; TODO : minimize
+	; TODO : Optimize this part.
 
 	cld
 
@@ -214,25 +214,31 @@ processIDEDeviceData:
 
 	mov si,IDE_DEVICE_DATA
 
-	add si,2
-	lodsw
+.copyParameters:
+	mov ax,[si+IDE_DEVICE_DATA_CYLINDERS_OFFSET]
 	mov word [IDE_DEVICE_CYLINDERS],ax
 	mov word [IDE_DEVICE_LDZONE],ax
 
-	add si,2
-	lodsw
+	mov ax,[si+IDE_DEVICE_DATA_HEADS_OFFSET]
 	mov word [IDE_DEVICE_HEADS],ax
 
-	add si,4
-	lodsw
+	mov ax,[si+IDE_DEVICE_DATA_SECTORS_OFFSET]
 	mov word [IDE_DEVICE_SECTORS],ax
 
 	mov word [IDE_DEVICE_WPCOMP],WPCOMP_VALUE
 
-	cld
+.copyTypeAndFeatures:
+	mov ax,[si+IDE_DEVICE_DATA_GENERAL_OFFSET]
+	mov byte [IDE_DEVICE_GENERAL_HIGH],ah
+	mov byte [IDE_DEVICE_GENERAL_LOW],al
+
+	mov ax,[si+IDE_DEVICE_DATA_FEATURES_OFFSET]
+	mov byte [IDE_DEVICE_FEATURES],ah
+
+	; TODO : Extract constants separately.
 
 .fillSerial:
-	add si,6
+	add si,20
 	mov di,IDE_DEVICE_SERIAL
 
 	mov cx,10			; read 20 characters (10 words)
@@ -266,6 +272,7 @@ processIDEDeviceData:
 ;     none
 ; ---------------------------------------------------------------------------
 copyWordsExchangeBytes:
+	cld
 
 .nextByte:
 	lodsw

@@ -15,13 +15,19 @@ section .text
 ;     DL - column
 ; Output:
 ;     none
+; Affects:
+;     FLAGS
 ; Preserves:
-;     none
+;     BX
 ; ---------------------------------------------------------------------------
 moveCursor:
+	push bx
+
 	mov ah,02h			; set cursor position
 	xor bh,bh			; video page 0
 	int 10h
+
+	pop bx
 
 	ret
 
@@ -30,16 +36,12 @@ moveCursor:
 ;     none
 ; Output:
 ;     none
+; Affects:
+;     FLAGS, AX, BX, DX
 ; Preserves:
-;     FLAGS, AX, BX, CX, DX
+;     none
 ; ---------------------------------------------------------------------------
 CRLF:
-	pushf
-	push ax
-	push bx
-	push cx
-	push dx
-
 	mov ah,03h			; get cursor position
 	xor bh,bh			; video page 0
 	int 10h
@@ -68,17 +70,38 @@ CRLF:
 	int 10h
 
 .exit:
-	pop dx
-	pop cx
-	pop bx
-	pop ax
-	popf
-
 	ret
 
+; Calculates the new position in VGA RAM.
+; Input:
+;     DH - row
+;     DL - column
+; Output:
+;     AX - result
+; Affects:
+;     FLAGS, BX
+; Preserves:
+;     CX, DX
+; ---------------------------------------------------------------------------
 calculatePosition:
+	push cx
+	push dx
 
-	; TODO : add code
+	mov cx,dx
+
+	xor ah,ah
+	mov al,ch			; row
+	xor bh,bh
+	mov bl,VIDEO_COLUMN_COUNT
+	mul bx
+	shl ax,1			; multiply by 2
+	xor dh,dh
+	mov dl,cl			; column
+	shl dx,1			; multiply by 2
+	add ax,dx
+
+	pop dx
+	pop cx
 
 	ret
 
@@ -90,18 +113,18 @@ calculatePosition:
 ;     CX - number of characters
 ; Output:
 ;     none
+; Affects:
+;     none
 ; Preserves:
-;     FLAGS, AX, BX, CX, DX, SI, DI, DS, ES
+;     AX, BX, CX, SI, DI, DS, ES
 ; ---------------------------------------------------------------------------
 highlightRegion:
 	push bp
 	mov bp,sp
 
-	pushf
 	push ax
 	push bx
 	push cx
-	push dx
 	push si
 	push di
 	push ds
@@ -111,24 +134,16 @@ highlightRegion:
 	mov ds,ax			; DS:SI = 0B800h:SI
 	mov es,ax			; ES:DI = 0B800h:DI
 
-	xor ah,ah
-	mov al,[bp-9]			; stored dh = row
-	xor bh,bh
-	mov bl,VIDEO_COLUMN_COUNT
-	mul bx
-	shl ax,1			; multiply by 2
-	xor dh,dh
-	mov dl,[bp-10]			; stored dl = column
-	shl dx,1			; multiply by 2
-	add ax,dx
+	call calculatePosition
 
 	mov si,ax
 	mov di,ax			; ES:DI = (dh * 80 + dl) * 2
 
+	cld
+
 .doHighlight:
 	lodsw
-	mov ah,[bp-3]			; attribute from stack (original ax)
-
+	mov ah,[bp-1]			; attribute from stack (original ax)
 	stosw
 
 	loop .doHighlight
@@ -137,11 +152,9 @@ highlightRegion:
 	pop ds
 	pop di
 	pop si
-	pop dx
 	pop cx
 	pop bx
 	pop ax
-	popf
 
 	mov sp,bp
 	pop bp
@@ -157,37 +170,28 @@ highlightRegion:
 ;     CX - number of characters
 ; Output:
 ;     none
+; Affects:
+;     none
 ; Preserves:
-;     FLAGS, AX, BX, CX, DX, DI, ES
+;     AX, BX, CX, DI, ES
 ; ---------------------------------------------------------------------------
 directWriteChar:
 	push bp
 	mov bp,sp
 
-	pushf
 	push ax
 	push bx
 	push cx
-	push dx
 	push di
 	push es
 
 	mov ax,VIDEO_RAM_SEGMENT
 	mov es,ax			; ES:DI = 0B800h:DI
 
-	xor ah,ah
-	mov al,[bp-9]			; stored dh = row
-	xor bh,bh
-	mov bl,VIDEO_COLUMN_COUNT
-	mul bx
-	shl ax,1			; multiply by 2
-	xor dh,dh
-	mov dl,[bp-10]			; stored dl = column
-	shl dx,1			; multiply by 2
-	add ax,dx
+	call calculatePosition
 
 	mov di,ax			; ES:DI = (dh * 80 + dl) * 2
-	mov ax,[bp-4]			; (attribute|character) from stack (original ax)
+	mov ax,[bp-2]			; (attribute|character) from stack (original ax)
 
 	cld
 
@@ -195,11 +199,9 @@ directWriteChar:
 
 	pop es
 	pop di
-	pop dx
 	pop cx
 	pop bx
 	pop ax
-	popf
 
 	mov sp,bp
 	pop bp
@@ -212,14 +214,15 @@ directWriteChar:
 ;     DS:SI - pointer to string
 ; Output:
 ;     none
+; Affects:
+;     FLAGS
 ; Preserves:
-;     FLAGS, AX, BX, CX, SI, DI, ES
+;     AX, BX, CX, SI, DI, ES
 ; ---------------------------------------------------------------------------
 directWrite:
 	push bp
 	mov bp,sp
 
-	pushf
 	push ax
 	push bx
 	push cx
@@ -237,23 +240,10 @@ directWrite:
 	cld
 
 .computePosition:
-	mov cx,dx			; save row,column
-
-	xor ah,ah
-	mov al,ch			; ch = row
-	xor bh,bh
-	mov bl,VIDEO_COLUMN_COUNT
-	mul bx
-	shl ax,1			; multiply by 2
-	xor dh,dh
-	mov dl,cl			; cl = column
-	shl dx,1			; multiply by 2
-	add ax,dx
-
-	mov dx,cx			; restore row,column
+	call calculatePosition
 
 	mov di,ax			; ES:DI = (ch * 80 + cl) * 2
-	mov ah,[bp-3]			; attribute from stack (original ah)
+	mov ah,[bp-1]			; attribute from stack (original ah)
 
 .nextByte:
 	lodsb				; load byte from DS:SI
@@ -316,7 +306,6 @@ directWrite:
 	pop cx
 	pop bx
 	pop ax
-	popf
 
 	mov sp,bp
 	pop bp
@@ -331,6 +320,8 @@ directWrite:
 ;     DS:SI - pointer to string
 ; Output:
 ;     none
+; Affects:
+;     none
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
@@ -344,19 +335,77 @@ directWriteAt:
 
 	ret
 
+; Writes an integer number directly to the VGA RAM at position: DH,DL.
+; Input:
+;     AX - number
+;     BH - color attribute
+;     DH - row
+;     DL - column
+; Output:
+;     none
+; Affected:
+;     FLAGS
+; Preserves:
+;     BX, CX, DX
+; ---------------------------------------------------------------------------
+directWriteInteger:
+	push bp
+	mov bp,sp
+
+	push bx
+	push cx
+	push dx
+
+	mov bx,10			; base-10
+
+	xor cx,cx			; number of digits
+
+.nextDigit:
+	xor dx,dx
+	div bx				; dx = dx:ax % bx
+	add dx,30h			; convert to character
+
+	push dx				; save digit (dl)
+
+	inc cx				; next digit
+
+	or ax,ax
+	jnz .nextDigit
+
+.printDigit:
+	pop dx				; load digit (dl)
+
+	mov ah,[bp-1]			; stored bh = color attribute
+	mov al,dl
+	mov dx,[bp-6]			; stored dx = row,column
+	call directWriteChar
+
+	inc byte [bp-6]			; next column
+	call moveCursor
+
+	loop .printDigit
+
+	pop dx
+	pop cx
+	pop bx
+
+	mov sp,bp
+	pop bp
+
+	ret
+
 ; Delay for a number of seconds using the System Timer.
 ; Input:
 ;     CX - number of seconds
 ; Output:
 ;     none
+; Affects:
+;      FLAGS, AX, CX
 ; Preserves:
-;     FLAGS, AX, BX, CX, DX, DS
+;     BX, DX, DS
 ; ---------------------------------------------------------------------------
 delay:
-	pushf
-	push ax
 	push bx
-	push cx
 	push dx
 	push ds
 
@@ -377,9 +426,6 @@ delay:
 
 	pop ds
 	pop dx
-	pop cx
 	pop bx
-	pop ax
-	popf
 
 	ret

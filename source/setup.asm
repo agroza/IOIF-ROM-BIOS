@@ -189,8 +189,8 @@ drawSetupTUI:
 	mov si,sMainMenuSaveAndExit
 	call directWriteAt
 
-	mov dh,23			; row
-	mov dl,16			; column
+	mov dh,SETUP_USAGE_TOP
+	mov dl,SETUP_USAGE_OFFSET
 	mov ah,BIOS_HIGHLIGHT_TEXT_COLOR
 	mov si,sSetupUsage
 	call directWriteAt
@@ -241,40 +241,43 @@ drawParameters:
 .writeDeviceType:
 	call directWriteAt
 
+	mov bh,ah			; color attribute for directWriteInteger
+
 	mov dl,IDE_DEVICE_REGION_CYLINDERS_OFFSET
 	call moveCursor
 
 	mov ax,[IDE_DEVICE_CYLINDERS]
-	call print_dec
+	call directWriteInteger
 
 	mov dl,IDE_DEVICE_REGION_HEADS_OFFSET
 	call moveCursor
 
 	mov ax,[IDE_DEVICE_HEADS]
-	call print_dec
+	call directWriteInteger
 
 	mov dl,IDE_DEVICE_REGION_SECTORS_OFFSET
 	call moveCursor
 
 	mov ax,[IDE_DEVICE_SECTORS]
-	call print_dec
+	call directWriteInteger
 
 	mov dl,IDE_DEVICE_REGION_WPCOMP_OFFSET
 	call moveCursor
 
 	mov ax,[IDE_DEVICE_WPCOMP]
-	call print_dec
+	call directWriteInteger
 
 	mov dl,IDE_DEVICE_REGION_LDZONE_OFFSET
 	call moveCursor
 
 	mov ax,[IDE_DEVICE_LDZONE]
-	call print_dec
+	call directWriteInteger
 
 	mov dl,IDE_DEVICE_REGION_SIZE_OFFSET
 	call moveCursor
 
-	push dx
+	push bx				; save color attribute
+	push dx				; save row,column
 
 	mov ax,[IDE_DEVICE_CYLINDERS]
 	mov bx,[IDE_DEVICE_HEADS]
@@ -285,9 +288,10 @@ drawParameters:
 	div bx
 	shr ax,1			; divide by 2 (assume 512 bps)
 
-	call print_dec
+	pop dx				; restore row,column
+	pop bx				; restore color attribute
 
-	pop dx
+	call directWriteInteger
 
 	mov dl,IDE_DEVICE_REGION_MODE_OFFSET
 	mov ah,BIOS_TEXT_COLOR
@@ -402,9 +406,9 @@ editIDEDeviceParameter:
 	mov ah,00h			; read key press
 	int 16h
 
-	cmp ax,KBD_ESC
+	cmp ax,KEYBOARD_ESC
 	je .exit
-	cmp ax,KBD_ENTER
+	cmp ax,KEYBOARD_ENTER
 	je .exitSave
 
 	; TODO : Allow entering of numbers.
@@ -455,17 +459,17 @@ editIDEDevicesParameters:
 	mov ah,00h			; read key press
 	int 16h
 
-	cmp ax,KBD_ESC
+	cmp ax,KEYBOARD_ESC
 	je .exit
-	cmp ax,KBD_ENTER
+	cmp ax,KEYBOARD_ENTER
 	je .executeAction
-	cmp ax,KBD_UP
+	cmp ax,KEYBOARD_UP
 	je .moveUp
-	cmp ax,KBD_DOWN
+	cmp ax,KEYBOARD_DOWN
 	je .moveDown
-	cmp ax,KBD_LEFT
+	cmp ax,KEYBOARD_LEFT
 	je .moveLeft
-	cmp ax,KBD_RIGHT
+	cmp ax,KEYBOARD_RIGHT
 	je .moveRight
 
 	jmp .editParametersLoop
@@ -574,6 +578,48 @@ editIDEDevicesParameters:
 
 	ret
 
+; Highlights a specific IDE Device Feature.
+; Input:
+;     AH - features byte
+;     AL - feature test bit mask
+;     BL - extra condition test bit mask: possible = !(ah and al) or bl
+;     DH - row
+;     DL - column
+;     CX - feature string length
+; Output:
+;     none
+; Preserves:
+;     AX
+; ---------------------------------------------------------------------------
+highlightFeature:
+	push ax
+
+	and ah,al
+	jnz .featurePresent
+
+.featureAbsent:
+	or bl,bl
+	jnz .featurePossible
+
+	mov ah,IDE_FEATURE_ABSENT
+
+	jmp .exit
+
+.featurePossible:
+	mov ah,IDE_FEATURE_POSSIBLE
+
+	jmp .exit
+
+.featurePresent:
+	mov ah,IDE_FEATURE_PRESENT
+
+.exit:
+	call highlightRegion	
+
+	pop ax
+
+	ret
+
 ; Displays information about the selected IDE Device.
 ; Input:
 ;     BL - device ID
@@ -587,7 +633,7 @@ deviceInformation:
 	push cx
 	push dx
 
-	; TODO : put bx to use
+	; TODO : Infer IDE Device index from BX.
 
 	mov ah,BIOS_TEXT_COLOR
 
@@ -608,31 +654,70 @@ deviceInformation:
 
 	inc dh				; row
 	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
+	mov si,sIDEDeviceGeneralList
+	call directWriteAt
+
+	inc dh				; row
+	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
 	mov si,sIDEDeviceFeaturesList
 	call directWriteAt
 
-	; TODO : Extract constants separately.
+.highlight:
+	xor bx,bx			; extra condition is false
+
+	dec dh				; row
+
+.highlightType:
+	mov ah,[IDE_DEVICE_GENERAL_HIGH]
+
+	mov al,IDE_DEVICE_GENERAL_FIXED_FLAG
+	mov dl,IDE_DEVICE_GENERAL_FIXED_OFFSET
+	mov cx,IDE_DEVICE_GENERAL_FIXED_LENGTH
+	call highlightFeature
+
+	mov al,IDE_DEVICE_GENERAL_REMOVABLE_FLAG
+	add dl,IDE_DEVICE_GENERAL_REMOVABLE_OFFSET
+	mov cx,IDE_DEVICE_GENERAL_REMOVABLE_LENGTH
+	call highlightFeature
+
+	mov ah,[IDE_DEVICE_GENERAL_LOW]
+
+	mov al,IDE_DEVICE_GENERAL_NON_MAGNETIC_FLAG
+	add dl,IDE_DEVICE_GENERAL_NON_MAGNETIC_OFFSET
+	mov cx,IDE_DEVICE_GENERAL_NON_MAGNETIC_LENGTH
+	call highlightFeature
 
 .highlightFeatures:
-	mov ah,IDE_FEATURE_PRESENT
-	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
-	mov cx,3 ; lba
-	call highlightRegion
+	inc dh				; row
 
-	mov ah,IDE_FEATURE_ABSENT
-	add dl,5
-	mov cx,3 ; dma
-	call highlightRegion
+	mov ah,[IDE_DEVICE_FEATURES]
 
-	mov ah,IDE_FEATURE_PRESENT
-	add dl,5
-	mov cx,6 ; iordy
-	call highlightRegion
+	mov al,IDE_DEVICE_FEATURE_LBA_FLAG
+	mov dl,IDE_DEVICE_FEATURE_LBA_OFFSET
+	mov cx,IDE_DEVICE_FEATURE_LBA_LENGTH
+	call highlightFeature
 
-	mov ah,IDE_FEATURE_POSSIBLE
-	add dl,7
-	mov cx,11 ; disableable
-	call highlightRegion
+	mov al,IDE_DEVICE_FEATURE_DMA_FLAG
+	add dl,IDE_DEVICE_FEATURE_DMA_OFFSET
+	mov cx,IDE_DEVICE_FEATURE_DMA_LENGTH
+	call highlightFeature
+
+	push bx
+
+	; TODO : IORDY availability could be better signalled.
+
+	mov al,IDE_DEVICE_FEATURE_IORDY_FLAG
+	mov bl,[IDE_DEVICE_CYLINDERS]	; IORDY could be available if drive exists
+	add dl,IDE_DEVICE_FEATURE_IORDY_OFFSET
+	mov cx,IDE_DEVICE_FEATURE_IORDY_LENGTH
+	call highlightFeature
+
+	pop bx
+
+	mov al,IDE_DEVICE_FEATURE_IORDY_DISABLE_FLAG
+	add dl,IDE_DEVICE_FEATURE_IORDY_DISABLE_OFFSET
+	mov cx,IDE_DEVICE_FEATURE_IORDY_DISABLE_LENGTH
+	call highlightFeature
 
 	pop dx
 	pop cx
@@ -646,7 +731,7 @@ deviceInformation:
 ; Output:
 ;     none
 ; Preserves:
-;     DX
+;     BX, CX, DX
 ; ---------------------------------------------------------------------------
 viewIDEDevicesInformation:
 	push bx
@@ -687,6 +772,11 @@ viewIDEDevicesInformation:
 
 	inc dh				; row
 	mov dl,IDE_DEVICE_INFO_KEY_OFFSET
+	mov si,sIDEDeviceGeneral
+	call directWriteAt
+
+	inc dh				; row
+	mov dl,IDE_DEVICE_INFO_KEY_OFFSET
 	mov si,sIDEDeviceFeatures
 	call directWriteAt
 
@@ -709,13 +799,13 @@ viewIDEDevicesInformation:
 	mov ah,00h			; read key press
 	int 16h
 
-	cmp ax,KBD_ESC
+	cmp ax,KEYBOARD_ESC
 	je .exit
-	cmp ax,KBD_ENTER
+	cmp ax,KEYBOARD_ENTER
 	je .executeAction
-	cmp ax,KBD_UP
+	cmp ax,KEYBOARD_UP
 	je .moveUp
-	cmp ax,KBD_DOWN
+	cmp ax,KEYBOARD_DOWN
 	je .moveDown
 
 	jmp .ideDevicesMenuLoop
@@ -725,8 +815,10 @@ viewIDEDevicesInformation:
 	call highlightRegion
 
 	push cx
+
 	mov cx,1
 	call delay
+
 	pop cx
 
 	mov ah,BIOS_SELECTED_COLOR
@@ -796,6 +888,10 @@ viewIDEDevicesInformation:
 ;     none
 ; ---------------------------------------------------------------------------
 enterSetup:
+	mov ah,00h			; set video mode
+	mov al,03h			; 80 x 25, 16 colors
+	int 10h
+
 	mov ah,01h			; set text-mode cursor shape
 	mov cx,2607h			; hide cursor
 	int 10h
@@ -827,7 +923,7 @@ enterSetup:
 	call drawParameters
 
 .partialRedraw:
-	mov dh,VIDEO_ROW_COUNT - 2	; row
+	mov dh,SETUP_USAGE_TOP
 	mov dl,2			; column
 	mov ah,BIOS_HIGHLIGHT_TEXT_COLOR
 	mov si,sSetupESCExit
@@ -852,13 +948,13 @@ enterSetup:
 	mov ah,00h			; read key press
 	int 16h
 
-	cmp ax,KBD_ESC
+	cmp ax,KEYBOARD_ESC
 	je .exitSetup
-	cmp ax,KBD_ENTER
+	cmp ax,KEYBOARD_ENTER
 	je .executeAction
-	cmp ax,KBD_UP
+	cmp ax,KEYBOARD_UP
 	je .moveUp
-	cmp ax,KBD_DOWN
+	cmp ax,KEYBOARD_DOWN
 	je .moveDown
 
 	jmp .mainMenuLoop
@@ -926,7 +1022,7 @@ enterSetup:
 	mov ah,BIOS_TEXT_COLOR		; destroy any possible selection
 	call highlightRegion
 
-	mov dh,VIDEO_ROW_COUNT - 2	; row
+	mov dh,SETUP_USAGE_TOP
 	mov dl,2			; column
 	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
 	mov si,sSetupExit
@@ -940,15 +1036,15 @@ enterSetup:
 	mov ah,00h			; read key press
 	int 16h
 
-	cmp ax,KBD_ESC
+	cmp ax,KEYBOARD_ESC
 	je .partialRedraw
-	cmp ax,KBD_ENTER
+	cmp ax,KEYBOARD_ENTER
 	je .exit
 	or ah,ah			; switch to characters
 	sub al,20h			; convert to uppercase
-	cmp al,KBD_Y
+	cmp al,KEYBOARD_Y
 	je .exit
-	cmp al,KBD_N
+	cmp al,KEYBOARD_N
 	je .partialRedraw
 
 	jmp .exitMenuLoop
