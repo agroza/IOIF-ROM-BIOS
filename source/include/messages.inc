@@ -33,6 +33,7 @@ sIDEDeviceTypeAuto		DB 'AUTO',0
 
 sIDEDeviceModeCHS		DB 'CHS',0
 
+sIDEDeviceNA			DB 'N/A',0
 sIDEDeviceModel			DB 'Model',0
 sIDEDeviceSerial		DB 'Serial',0
 sIDEDeviceRevision		DB 'Revision',0
