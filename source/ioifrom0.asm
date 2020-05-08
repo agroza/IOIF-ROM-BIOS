@@ -46,8 +46,10 @@ section .text
 ; Initialization Routine
 ; Input:
 ;     none
-; Output
+; Output:
 ;     none
+; Affects:
+;     FLAGS
 ; Preserves:
 ;     AX, BX, CX, DX, SI, DS, ES
 ; ---------------------------------------------------------------------------
@@ -83,6 +85,8 @@ start:
 	jmp .exit
 
 .continue:
+	call clearIDEDevicesData
+
 	mov si,sPressDELKey
 	call directWrite
 
@@ -108,9 +112,7 @@ start:
 	mov si,sIDEDevicePM
 	call directWrite
 
-	mov ax,PRIMARY_IDE_INTERFACE
-	mov bx,PRIMARY_IDE_INTERFACE_CONTROL
-	mov cl,IDE_MASTER_DEVICE
+	mov si,IDE_INTERFACES_DEVICE_0
 	call autodetectDevice
 
 	mov ah,NORMAL_TEXT_COLOR
@@ -119,9 +121,7 @@ start:
 	mov si,sIDEDevicePS
 	call directWrite
 
-	mov ax,PRIMARY_IDE_INTERFACE
-	mov bx,PRIMARY_IDE_INTERFACE_CONTROL
-	mov cl,IDE_SLAVE_DEVICE
+	mov si,IDE_INTERFACES_DEVICE_1
 	call autodetectDevice
 
 	mov ah,NORMAL_TEXT_COLOR
@@ -130,9 +130,7 @@ start:
 	mov si,sIDEDeviceSM
 	call directWrite
 
-	mov ax,SECONDARY_IDE_INTERFACE
-	mov bx,SECONDARY_IDE_INTERFACE_CONTROL
-	mov cl,IDE_MASTER_DEVICE
+	mov si,IDE_INTERFACES_DEVICE_2
 	call autodetectDevice
 
 	mov ah,NORMAL_TEXT_COLOR
@@ -141,9 +139,7 @@ start:
 	mov si,sIDEDeviceSS
 	call directWrite
 
-	mov ax,SECONDARY_IDE_INTERFACE
-	mov bx,SECONDARY_IDE_INTERFACE_CONTROL
-	mov cl,IDE_SLAVE_DEVICE
+	mov si,IDE_INTERFACES_DEVICE_3
 	call autodetectDevice
 
 .exit:

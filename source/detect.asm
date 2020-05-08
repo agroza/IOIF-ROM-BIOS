@@ -14,7 +14,7 @@ section .text
 ; But by design, the IDE interfaces are hard-wired for 16-bit ISA slots.
 ; Input:
 ;     none
-; Output
+; Output:
 ;     AL - 0 = 8-bit, 1 = 16-bit
 ; Affects:
 ;     BX
@@ -46,14 +46,35 @@ check8bitCPU:
 
 	ret
 
+; Clears the IDE_DEVICES_DATA memory array.
+; Input:
+;     none
+; Output:
+;     none
+; Affets:
+;     AX, CX, DI
+; Preserves:
+;     none
+; ---------------------------------------------------------------------------
+clearIDEDevicesData:
+	mov di,IDE_DEVICES_DATA
+	mov ax,00h
+	mov cx,IDE_DEVICES_DATA_SIZE * IDE_DEVICES_DATA_DEVICES_COUNT
+
+	cld
+
+	rep stosb
+
+	ret
+
 ; Identification of an IDE device.
 ; Input:
-;     AX - IDE Interface Base Address
-;     BX - IDE Interface Controll Address
-;     CL - Master/Slave
-; Output
+;     SI - pointer to IDE_INTERFACE_DEVICE_X structure, where X = 0, 1, 2, 3
+; Output:
 ;     AL - 0 = success; 1 = error
-;     IDE_DEVICE_DATA - is filled
+;     ATA_IDENTIFY_DEVICE_DATA - filled with data if sucess, zeroes if error
+; Affects:
+;     AX, BX, CX
 ; Preserves:
 ;     FLAGS, DX, SI, DI, DS
 ; ---------------------------------------------------------------------------
@@ -61,17 +82,15 @@ identifyDevice:
 	push bp
 	mov bp,sp
 
-	sub sp,6				; allocate 6 bytes
+	push word [si + IDE_INTERFACE_BASE_ADDRESS]
+	push word [si + IDE_INTERFACE_CONTROL_ADDRESS]
+	push word [si + IDE_INTERFACE_DEVICE]
 
 	pushf
 	push dx
 	push si
 	push di
 	push ds
-
-	mov word [bp-2],ax			; IDE Interface Base Address
-	mov word [bp-4],bx			; IDE Interface Controll Address
-	mov word [bp-6],cx			; Master/Slave
 
 	xor ax,ax
 	mov ds,ax				; DS:SI = 0000h:SI
@@ -106,7 +125,7 @@ identifyDevice:
 	mov bx,ax				; store the new compare value
 	loop .waitBSY				; continue until time-out
 
-	jmp .clearIDEDeviceData			; time-out, assume error
+	jmp .clearATAIdentifyDeviceData		; time-out, assume error
 
 .checkDRDY:
 	mov dx,[bp-2]				; IDE Interface Base Address
@@ -128,7 +147,7 @@ identifyDevice:
 	mov bx,ax				; store the new compare value
 	loop .waitDRDY				; continue until time-out
 
-	jmp .clearIDEDeviceData			; time-out, assume error
+	jmp .clearATAIdentifyDeviceData		; time-out, assume error
 
 .sendIdentifyCommand:
 	cli
@@ -155,7 +174,7 @@ identifyDevice:
 	mov dx,[bp-2]				; IDE Interface Base Address
 	add dx,DATA_REGISTER
 
-	mov di,IDE_DEVICE_DATA
+	mov di,ATA_IDENTIFY_DEVICE_DATA
 	mov cx,256
 
 	; TODO : Optimize this part.
@@ -166,14 +185,15 @@ identifyDevice:
 
 	sti
 
-	call processIDEDeviceData
+	mov bx,[bp-6]
+	call processATAIdentifyDeviceData
 
 	xor al,al				; assume success
 
 	jmp .exit
 
-.clearIDEDeviceData:
-	mov di,IDE_DEVICE_DATA
+.clearATAIdentifyDeviceData:
+	mov di,ATA_IDENTIFY_DEVICE_DATA
 	mov ax,00h
 	mov cx,256
 
@@ -181,7 +201,8 @@ identifyDevice:
 
 	rep stosw				; fill the buffer with device data
 
-	call processIDEDeviceData
+	mov bx,[bp-6]
+	call processATAIdentifyDeviceData
 
 	mov al,1				; assume error
 
@@ -197,65 +218,86 @@ identifyDevice:
 
 	ret
 
-; Identification of an IDE device.
+; Fills the IDE_DEVICES_DATA memory matrix with ATA Identify Device data.
 ; Input:
-;     AX - IDE Interface Base Address
-;     BX - IDE Interface Controll Address
-;     CL - Master/Slave
-; Output
-;     AL - 0 = success; 1 = error
+;     BX - IDE Device ID
+; Output:
 ;     IDE_DEVICE_DATA - is filled
+; Affects:
+;     AH, BX, CX, SI, DI
 ; Preserves:
-;     DS
+;     DX, DS
 ; ---------------------------------------------------------------------------
-processIDEDeviceData:
-	; TODO : is DS required?
+processATAIdentifyDeviceData:
+	; TODO : is DS required? But ES ?
 	push ds
 	push cs
 	pop ds					; DS:SI = CS:SI
 
-	mov si,IDE_DEVICE_DATA
+	; calculate position
+
+	push dx
+
+	xor ah,ah
+	mov al,IDE_DEVICES_DATA_SIZE
+	xor bl,bl
+	xchg bh,bl
+	mul bx
+	add ax,IDE_DEVICES_DATA
+	mov bx,ax
+
+	pop dx
+
+	mov si,ATA_IDENTIFY_DEVICE_DATA
+	mov di,bx
 
 .copyParameters:
-	mov ax,[si+IDE_DEVICE_DATA_CYLINDERS_OFFSET]
-	mov word [IDE_DEVICE_CYLINDERS],ax
-	mov word [IDE_DEVICE_LDZONE],ax
+	mov ax,[si + ATA_IDENTIFY_DEVICE_CYLINDERS_OFFSET]
+	mov word [di + IDE_DEVICES_DATA_CYLINDERS_OFFSET],ax
+	mov word [di + IDE_DEVICES_DATA_LDZONE_OFFSET],ax
 
-	mov ax,[si+IDE_DEVICE_DATA_HEADS_OFFSET]
-	mov word [IDE_DEVICE_HEADS],ax
+	mov ax,[si + ATA_IDENTIFY_DEVICE_HEADS_OFFSET]
+	mov word [di + IDE_DEVICES_DATA_HEADS_OFFSET],ax
 
-	mov ax,[si+IDE_DEVICE_DATA_SECTORS_OFFSET]
-	mov word [IDE_DEVICE_SECTORS],ax
+	mov ax,[si + ATA_IDENTIFY_DEVICE_SECTORS_OFFSET]
+	mov word [di + IDE_DEVICES_DATA_SECTORS_OFFSET],ax
 
-	mov word [IDE_DEVICE_WPCOMP],WPCOMP_VALUE
+	or ax,ax				; no sectors?
+	jnz .copyWPCOMP
+	mov word [di + IDE_DEVICES_DATA_WPCOMP_OFFSET],ax
+	jmp .copyTypeAndFeatures
+
+.copyWPCOMP:
+	mov word [di + IDE_DEVICES_DATA_WPCOMP_OFFSET],WPCOMP_VALUE
 
 .copyTypeAndFeatures:
-	mov ax,[si+IDE_DEVICE_DATA_GENERAL_OFFSET]
-	mov byte [IDE_DEVICE_GENERAL_HIGH],ah
-	mov byte [IDE_DEVICE_GENERAL_LOW],al
+	mov ax,[si + ATA_IDENTIFY_DEVICE_GENERAL_OFFSET]
+	mov word [di + IDE_DEVICES_DATA_GENERAL_HIGH_OFFSET],ax
 
-	mov ax,[si+IDE_DEVICE_DATA_FEATURES_OFFSET]
-	mov byte [IDE_DEVICE_FEATURES],ah
+	mov ax,[si + ATA_IDENTIFY_DEVICE_FEATURES_OFFSET]
+	mov byte [di + IDE_DEVICES_DATA_FEATURES_OFFSET],ah
 
 	; TODO : Extract constants separately.
 
 .fillSerial:
 	add si,20
-	mov di,IDE_DEVICE_SERIAL
+
+	mov di,bx
+	add di,IDE_DEVICES_DATA_SERIAL_OFFSET
 
 	mov cx,10				; read 20 characters (10 words)
 	call copyWordsExchangeBytes
 
 .fillRevision:
 	add si,6
-	mov di,IDE_DEVICE_REVISION
+
+	mov di,bx
+	add di,IDE_DEVICES_DATA_REVISION_OFFSET
 
 	mov cx,4				; read 8 characters (4 words)
 	call copyWordsExchangeBytes
 
 .fillModel:
-	mov di,IDE_DEVICE_MODEL
-
 	mov cx,10				; read 40 characters (20 words)
 	call copyWordsExchangeBytes
 
@@ -268,8 +310,10 @@ processIDEDeviceData:
 ;     SI - source strig
 ;     DI - destination string
 ;     CX - number of words
-; Output
+; Output:
 ;     none
+; Affects:
+;     FLAGS, AX, SI, DI
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
@@ -283,18 +327,18 @@ copyWordsExchangeBytes:
 
 	loop .nextByte
 
-	xor al,al				; null-terminated string
-	stosb
+	xor ax,ax				; null-terminated string
+	stosw
 
 	ret
 
 ; Autodetection of an IDE device.
 ; Input:
-;     AX - IDE Interface Base Address
-;     BX - IDE Interface Controll Address
-;     CL - Master/Slave
-; Output
+;     SI - pointer to IDE_INTERFACE_DEVICE_X structure, where X = 0, 1, 2, 3
+; Output:
 ;     none
+; Affects:
+;     FLAGS, AX, SI
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
@@ -305,7 +349,7 @@ autodetectDevice:
 	jnz .detectNone
 
 	mov ah,HIGHLIGHT_TEXT_COLOR
-	mov si,IDE_DEVICE_MODEL
+	mov si,IDE_DEVICES_DATA + IDE_DEVICES_DATA_MODEL_OFFSET
 	call directWrite
 
 	jmp .exit

@@ -202,6 +202,8 @@ drawSetupTUI:
 ;     DH - row
 ; Output:
 ;     none
+; Affects:
+;     SI, DI
 ; Preserves:
 ;     FLAGS, AX, BX, CX, DX
 ; ---------------------------------------------------------------------------
@@ -215,6 +217,21 @@ drawParameters:
 	push cx
 	push dx
 
+	; calculate ide_device_position
+
+	push dx
+
+	mov ax,IDE_DEVICES_DATA_SIZE
+	mov bx,[si + IDE_INTERFACE_DEVICE]	; get device ID
+	xor bl,bl
+	xchg bh,bl
+	mul bx
+	add ax,IDE_DEVICES_DATA
+
+	mov di,ax
+
+	pop dx
+
 	mov ah,BIOS_TEXT_COLOR
 
 	mov al,20h				; empty space
@@ -224,7 +241,7 @@ drawParameters:
 
 	mov dl,IDE_DEVICE_REGION_TYPE_OFFSET
 
-	cmp word [IDE_DEVICE_CYLINDERS],0
+	cmp word [di + IDE_DEVICES_DATA_CYLINDERS_OFFSET],0
 	jnz .selectUser
 
 .selectNone:	
@@ -243,46 +260,33 @@ drawParameters:
 
 	mov bh,ah				; color attribute for directWriteInteger
 
+	mov ax,[di + IDE_DEVICES_DATA_CYLINDERS_OFFSET]
 	mov dl,IDE_DEVICE_REGION_CYLINDERS_OFFSET
-	call moveCursor
-
-	mov ax,[IDE_DEVICE_CYLINDERS]
 	call directWriteInteger
 
+	mov ax,[di + IDE_DEVICES_DATA_HEADS_OFFSET]
 	mov dl,IDE_DEVICE_REGION_HEADS_OFFSET
-	call moveCursor
-
-	mov ax,[IDE_DEVICE_HEADS]
 	call directWriteInteger
 
+	mov ax,[di + IDE_DEVICES_DATA_SECTORS_OFFSET]
 	mov dl,IDE_DEVICE_REGION_SECTORS_OFFSET
-	call moveCursor
-
-	mov ax,[IDE_DEVICE_SECTORS]
 	call directWriteInteger
 
+	mov ax,[di + IDE_DEVICES_DATA_WPCOMP_OFFSET]
 	mov dl,IDE_DEVICE_REGION_WPCOMP_OFFSET
-	call moveCursor
-
-	mov ax,[IDE_DEVICE_WPCOMP]
 	call directWriteInteger
 
+	mov ax,[di + IDE_DEVICES_DATA_LDZONE_OFFSET]
 	mov dl,IDE_DEVICE_REGION_LDZONE_OFFSET
-	call moveCursor
-
-	mov ax,[IDE_DEVICE_LDZONE]
 	call directWriteInteger
-
-	mov dl,IDE_DEVICE_REGION_SIZE_OFFSET
-	call moveCursor
 
 	push bx					; save color attribute
 	push dx					; save row,column
 
-	mov ax,[IDE_DEVICE_CYLINDERS]
-	mov bx,[IDE_DEVICE_HEADS]
+	mov ax,[di + IDE_DEVICES_DATA_CYLINDERS_OFFSET]
+	mov bx,[di + IDE_DEVICES_DATA_HEADS_OFFSET]
 	mul bx
-	mov bx,[IDE_DEVICE_SECTORS]
+	mov bx,[di + IDE_DEVICES_DATA_SECTORS_OFFSET]
 	mul bx
 	mov bx,1024				; in Mb
 	div bx
@@ -291,6 +295,7 @@ drawParameters:
 	pop dx					; restore row,column
 	pop bx					; restore color attribute
 
+	mov dl,IDE_DEVICE_REGION_SIZE_OFFSET
 	call directWriteInteger
 
 	mov dl,IDE_DEVICE_REGION_MODE_OFFSET
@@ -343,9 +348,7 @@ detectIDEDevicesParameters:
 	mov dh,IDE_DEVICES_REGION_PRIMARY_MASTER
 	call highlightDetection
 
-	mov ax,PRIMARY_IDE_INTERFACE
-	mov bx,PRIMARY_IDE_INTERFACE_CONTROL
-	mov cl,IDE_MASTER_DEVICE
+	mov si,IDE_INTERFACES_DEVICE_0	
 	call identifyDevice
 
 	call drawParameters
@@ -353,9 +356,7 @@ detectIDEDevicesParameters:
 	mov dh,IDE_DEVICES_REGION_PRIMARY_SLAVE
 	call highlightDetection
 
-	mov ax,PRIMARY_IDE_INTERFACE
-	mov bx,PRIMARY_IDE_INTERFACE_CONTROL
-	mov cl,IDE_SLAVE_DEVICE
+	mov si,IDE_INTERFACES_DEVICE_1
 	call identifyDevice
 
 	call drawParameters
@@ -363,9 +364,7 @@ detectIDEDevicesParameters:
 	mov dh,IDE_DEVICES_REGION_SECONDARY_MASTER
 	call highlightDetection
 
-	mov ax,SECONDARY_IDE_INTERFACE
-	mov bx,SECONDARY_IDE_INTERFACE_CONTROL
-	mov cl,IDE_MASTER_DEVICE
+	mov si,IDE_INTERFACES_DEVICE_2
 	call identifyDevice
 
 	call drawParameters
@@ -373,19 +372,10 @@ detectIDEDevicesParameters:
 	mov dh,IDE_DEVICES_REGION_SECONDARY_SLAVE
 	call highlightDetection
 
-	mov ax,SECONDARY_IDE_INTERFACE
-	mov bx,SECONDARY_IDE_INTERFACE_CONTROL
-	mov cl,IDE_SLAVE_DEVICE
+	mov si,IDE_INTERFACES_DEVICE_3
 	call identifyDevice
 
 	call drawParameters
-
-	; TODO : Remove this testing remnant.
-
-	mov ax,PRIMARY_IDE_INTERFACE
-	mov bx,PRIMARY_IDE_INTERFACE_CONTROL
-	mov cl,IDE_SLAVE_DEVICE
-	call identifyDevice
 
 	pop dx
 	pop cx
@@ -456,7 +446,7 @@ editIDEDeviceParameter:
 	mov al,' '
 	call directWriteChar
 
-	; TOOD : generate decimal number
+	; TODO : generate decimal number
 	xor al,al
 
 	jmp .editParameterLoop
@@ -495,7 +485,7 @@ editIDEDevicesParameters:
 
 	mov ah,BIOS_SELECTED_COLOR
 	xor ch,ch
-	mov cl,[si+1]				; region length
+	mov cl,[si + 1]				; region length
 	mov dh,bl				; row
 	mov dl,[si]				; region offset
 	call highlightRegion
@@ -558,7 +548,7 @@ editIDEDevicesParameters:
 
 	mov ah,BIOS_SELECTED_COLOR
 	xor ch,ch
-	mov cl,[si+1]				; region length
+	mov cl,[si + 1]				; region length
 	mov dh,bl				; row
 	mov dl,[si]				; region offset
 	call highlightRegion
@@ -577,7 +567,7 @@ editIDEDevicesParameters:
 
 	mov ah,BIOS_SELECTED_COLOR
 	xor ch,ch
-	mov cl,[si+1]				; region length
+	mov cl,[si + 1]				; region length
 	mov dh,bl				; row
 	mov dl,[si]				; region offset
 	call highlightRegion
@@ -596,7 +586,7 @@ editIDEDevicesParameters:
 
 	mov ah,BIOS_TEXT_COLOR
 	xor ch,ch
-	mov cl,[si+1]				; region length
+	mov cl,[si + 1]				; region length
 	mov dh,bl				; row
 	mov dl,[si]				; region offset
 	call highlightRegion
@@ -604,7 +594,7 @@ editIDEDevicesParameters:
 	sub si,2				; previous region
 
 	mov ah,BIOS_SELECTED_COLOR
-	mov cl,[si+1]				; region length
+	mov cl,[si + 1]				; region length
 	mov dl,[si]				; region offset
 	call highlightRegion
 
@@ -617,7 +607,7 @@ editIDEDevicesParameters:
 
 	mov ah,BIOS_TEXT_COLOR
 	xor ch,ch
-	mov cl,[si+1]				; region length
+	mov cl,[si + 1]				; region length
 	mov dh,bl				; row
 	mov dl,[si]				; region offset
 	call highlightRegion
@@ -625,7 +615,7 @@ editIDEDevicesParameters:
 	add si,2				; next region
 
 	mov ah,BIOS_SELECTED_COLOR
-	mov cl,[si+1]				; region length
+	mov cl,[si + 1]				; region length
 	mov dl,[si]				; region offset
 	call highlightRegion
 
@@ -691,6 +681,8 @@ highlightFeature:
 ;     BL - device ID
 ; Output:
 ;     none
+; Affects:
+;     SI
 ; Preserves:
 ;     BX, CX, DX
 ; ---------------------------------------------------------------------------
@@ -699,23 +691,55 @@ deviceInformation:
 	push cx
 	push dx
 
-	; TODO : Infer IDE Device index from BX.
+	; TODO : Ugly and not optimized. Reconsider refactoring.
+
+	push ax
+	push bx
+	push cx
+	push dx
+
+	mov ah,06h				; scroll up window
+	mov al,VIDEO_ROW_COUNT			; by screen height
+	mov bh,BIOS_TEXT_COLOR			; attribute to pass to function 06h
+	mov ch,11				; row
+	mov cl,IDE_DEVICE_INFO_VALUE_OFFSET	; column
+	mov dh,VIDEO_ROW_COUNT - 4		; last row - 1
+	mov dl,VIDEO_COLUMN_COUNT - 2		; last column - 1
+	int 10h
+
+	pop dx
+	pop cx
+	pop bx
+	pop ax
+
+	push dx
+
+	mov ax,IDE_DEVICES_DATA_SIZE
+	xor bh,bh
+	sub bl,IDE_DEVICES_REGION_TOP		; Infer IDE Device index from bl (row = ID)
+	mul bx
+	add ax,IDE_DEVICES_DATA
+	mov bx,ax
+	pop dx
 
 	mov ah,BIOS_TEXT_COLOR
 
 	mov dh,IDE_DEVICE_INFO_TOP
 	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
-	mov si,IDE_DEVICE_MODEL
+	mov si,bx
+	add si,IDE_DEVICES_DATA_MODEL_OFFSET
 	call directWriteAt
 
 	inc dh					; row
 	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
-	mov si,IDE_DEVICE_SERIAL
+	mov si,bx
+	add si,IDE_DEVICES_DATA_SERIAL_OFFSET
 	call directWriteAt
 
 	inc dh					; row
-	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
-	mov si,IDE_DEVICE_REVISION
+	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET	
+	mov si,bx
+	add si,IDE_DEVICES_DATA_REVISION_OFFSET
 	call directWriteAt
 
 	inc dh					; row
@@ -728,27 +752,31 @@ deviceInformation:
 	mov si,sIDEDeviceFeaturesList
 	call directWriteAt
 
+	; TODO : This test is fishy.
+
+	cmp word [bx],0				; no cylinders?
+	je .exit
+
 .highlight:
 	xor bx,bx				; extra condition is false
 
 	dec dh					; row
 
 .highlightType:
-	mov ah,[IDE_DEVICE_GENERAL_HIGH]
-
-	mov al,IDE_DEVICE_GENERAL_FIXED_FLAG
+	mov ah,[IDE_DEVICES_DATA + IDE_DEVICES_DATA_GENERAL_HIGH_OFFSET]
+	mov al,ATA_ID_DEV_GENERAL_FIXED_FLAG
 	mov dl,IDE_DEVICE_GENERAL_FIXED_OFFSET
 	mov cx,IDE_DEVICE_GENERAL_FIXED_LENGTH
 	call highlightFeature
 
-	mov al,IDE_DEVICE_GENERAL_REMOVABLE_FLAG
+	mov al,ATA_ID_DEV_GENERAL_REMOVABLE_FLAG
 	add dl,IDE_DEVICE_GENERAL_REMOVABLE_OFFSET
 	mov cx,IDE_DEVICE_GENERAL_REMOVABLE_LENGTH
 	call highlightFeature
 
-	mov ah,[IDE_DEVICE_GENERAL_LOW]
+	mov ah,[IDE_DEVICES_DATA + IDE_DEVICES_DATA_GENERAL_LOW_OFFSET]
 
-	mov al,IDE_DEVICE_GENERAL_NON_MAGNETIC_FLAG
+	mov al,ATA_ID_DEV_GENERAL_NON_MAGNETIC_FLAG
 	add dl,IDE_DEVICE_GENERAL_NON_MAGNETIC_OFFSET
 	mov cx,IDE_DEVICE_GENERAL_NON_MAGNETIC_LENGTH
 	call highlightFeature
@@ -756,14 +784,14 @@ deviceInformation:
 .highlightFeatures:
 	inc dh					; row
 
-	mov ah,[IDE_DEVICE_FEATURES]
+	mov ah,[IDE_DEVICES_DATA + IDE_DEVICES_DATA_FEATURES_OFFSET]
 
-	mov al,IDE_DEVICE_FEATURE_LBA_FLAG
+	mov al,ATA_ID_DEV_FEATURE_LBA_FLAG
 	mov dl,IDE_DEVICE_FEATURE_LBA_OFFSET
 	mov cx,IDE_DEVICE_FEATURE_LBA_LENGTH
 	call highlightFeature
 
-	mov al,IDE_DEVICE_FEATURE_DMA_FLAG
+	mov al,ATA_ID_DEV_FEATURE_DMA_FLAG
 	add dl,IDE_DEVICE_FEATURE_DMA_OFFSET
 	mov cx,IDE_DEVICE_FEATURE_DMA_LENGTH
 	call highlightFeature
@@ -771,20 +799,22 @@ deviceInformation:
 	push bx
 
 	; TODO : IORDY availability could be better signalled.
+	; IORDY could be available if drive exists. So bl is number of cylinders.
 
-	mov al,IDE_DEVICE_FEATURE_IORDY_FLAG
-	mov bl,[IDE_DEVICE_CYLINDERS]		; IORDY could be available if drive exists
+	mov al,ATA_ID_DEV_FEATURE_IORDY_FLAG
+	mov bl,[IDE_DEVICES_DATA + IDE_DEVICES_DATA_CYLINDERS_OFFSET + 1]
 	add dl,IDE_DEVICE_FEATURE_IORDY_OFFSET
 	mov cx,IDE_DEVICE_FEATURE_IORDY_LENGTH
 	call highlightFeature
 
 	pop bx
 
-	mov al,IDE_DEVICE_FEATURE_IORDY_DISABLE_FLAG
+	mov al,ATA_ID_DEV_FEATURE_IORDY_DISABLE_FLAG
 	add dl,IDE_DEVICE_FEATURE_IORDY_DISABLE_OFFSET
 	mov cx,IDE_DEVICE_FEATURE_IORDY_DISABLE_LENGTH
 	call highlightFeature
 
+.exit:
 	pop dx
 	pop cx
 	pop bx
@@ -847,7 +877,7 @@ viewIDEDevicesInformation:
 	call directWriteAt
 
 .selectFirstItem:
-	xor bh,bh				; initial row
+	xor bh,bh				; ignore row
 	mov bl,IDE_DEVICES_REGION_TOP
 
 	mov ah,BIOS_SELECTED_COLOR
@@ -972,21 +1002,9 @@ enterSetup:
 
 	call drawSetupTUI
 
-	; TODO : Reconsider how to write the params.
+	; This will most probably be replaced with a call to read the EEPROM stored parameters.
 
 	call readCMOSData
-
-	mov dh,IDE_DEVICES_REGION_PRIMARY_MASTER
-	call drawParameters
-
-	mov dh,IDE_DEVICES_REGION_PRIMARY_SLAVE
-	call drawParameters
-
-	mov dh,IDE_DEVICES_REGION_SECONDARY_MASTER
-	call drawParameters
-
-	mov dh,IDE_DEVICES_REGION_SECONDARY_SLAVE
-	call drawParameters
 
 .partialRedraw:
 	mov dh,SETUP_USAGE_TOP
