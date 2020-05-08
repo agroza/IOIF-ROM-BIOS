@@ -16,28 +16,30 @@ section .text
 ;     none
 ; Output
 ;     AL - 0 = 8-bit, 1 = 16-bit
+; Affects:
+;     BX
 ; Preserves:
 ;     FLAGS
 ; ---------------------------------------------------------------------------
 check8bitCPU:
 	pushf
 
-	xor al,al			; 8-bit CPU
+	xor al,al				; 8-bit CPU
 
 	pushf
-	pop bx				; flags in bx
-	and bx,00FFFh			; mask off bits 12-15
-	push bx				; save on stack
+	pop bx					; flags in bx
+	and bx,00FFFh				; mask off bits 12-15
+	push bx					; save on stack
 
-	popf				; restore flags
-	pushf				; save flags again
+	popf					; restore flags
+	pushf					; save flags again
 
-	pop bx				; flags in bx
-	and bx,0F000h			; mask off all bits, besides 12-15
-	cmp bx,0F000h			; bits 12-15 are still set?
+	pop bx					; flags in bx
+	and bx,0F000h				; mask off all bits, besides 12-15
+	cmp bx,0F000h				; bits 12-15 are still set?
 	je .exit
 
-	inc al				; 16-bit CPU
+	inc al					; 16-bit CPU
 
 .exit:
 	popf
@@ -59,7 +61,7 @@ identifyDevice:
 	push bp
 	mov bp,sp
 
-	sub sp,6			; allocate 6 bytes
+	sub sp,6				; allocate 6 bytes
 
 	pushf
 	push dx
@@ -67,82 +69,82 @@ identifyDevice:
 	push di
 	push ds
 
-	mov word [bp-2],ax		; IDE Interface Base Address
-	mov word [bp-4],bx		; IDE Interface Controll Address
-	mov word [bp-6],cx		; Master/Slave
+	mov word [bp-2],ax			; IDE Interface Base Address
+	mov word [bp-4],bx			; IDE Interface Controll Address
+	mov word [bp-6],cx			; Master/Slave
 
 	xor ax,ax
-	mov ds,ax			; DS:SI = 0000h:SI
+	mov ds,ax				; DS:SI = 0000h:SI
 
 .wait400ns:
-	mov dx,[bp-4]			; IDE Interface Control Address
+	mov dx,[bp-4]				; IDE Interface Control Address
 	add dx,ALTERNATE_STATUS_REGISTER
 
 	mov cl,3
 .nextRead:
-	in al,dx			; takes 100ns
+	in al,dx				; takes 100ns
 	dec cl
 	jnz .nextRead
 
 .checkBSY:
-	mov dx,[bp-2]			; IDE Interface Base Address
+	mov dx,[bp-2]				; IDE Interface Base Address
 	add dx,STATUS_REGISTER
 
-	mov ax,18			; 18 Hz
-	shl ax,1			; multiply by 2 seconds
-	xchg ax,cx			; result in cx
-	mov bx,[46Ch]			; BIOS timer count is updated at 18.2 Hz
+	mov ax,18				; 18 Hz
+	shl ax,1				; multiply by 2 seconds
+	xchg ax,cx				; result in cx
+	mov bx,[46Ch]				; BIOS timer count is updated at 18.2 Hz
 
 .waitBSY:
-	in al,dx			; read
+	in al,dx				; read
 	and al,STATUS_REGISTER_BSY
 	jz .checkDRDY
 
-	mov ax,[46Ch]			; BIOS timer count is updated at 18.2 Hz
-	cmp ax,bx			; same timer count?
+	mov ax,[46Ch]				; BIOS timer count is updated at 18.2 Hz
+	cmp ax,bx				; same timer count?
 	je .waitBSY
-	mov bx,ax			; store the new compare value
-	loop .waitBSY			; continue until time-out
+	mov bx,ax				; store the new compare value
+	loop .waitBSY				; continue until time-out
 
-	jmp .clearIDEDeviceData		; time-out, assume error
+	jmp .clearIDEDeviceData			; time-out, assume error
 
 .checkDRDY:
-	mov dx,[bp-2]			; IDE Interface Base Address
+	mov dx,[bp-2]				; IDE Interface Base Address
 	add dx,STATUS_REGISTER
 
-	mov ax,18			; 18 Hz
-	shl ax,1			; multiply by 2 seconds
-	xchg ax,cx			; result in cx
-	mov bx,[46Ch]			; BIOS timer count is updated at 18.2 Hz
+	mov ax,18				; 18 Hz
+	shl ax,1				; multiply by 2 seconds
+	xchg ax,cx				; result in cx
+	mov bx,[46Ch]				; BIOS timer count is updated at 18.2 Hz
 
 .waitDRDY:
-	in al,dx			; read
+	in al,dx				; read
 	and al,STATUS_REGISTER_DRDY
 	jnz .sendIdentifyCommand
 
-	mov ax,[46Ch]			; BIOS timer count is updated at 18.2 Hz
-	cmp ax,bx			; same timer count?
+	mov ax,[46Ch]				; BIOS timer count is updated at 18.2 Hz
+	cmp ax,bx				; same timer count?
 	je .waitDRDY
-	mov bx,ax			; store the new compare value
-	loop .waitDRDY			; continue until time-out
+	mov bx,ax				; store the new compare value
+	loop .waitDRDY				; continue until time-out
 
-	jmp .clearIDEDeviceData		; time-out, assume error
+	jmp .clearIDEDeviceData			; time-out, assume error
 
 .sendIdentifyCommand:
 	cli
 
-	mov dx,[bp-2]			; IDE Interface Base Address
+	mov dx,[bp-2]				; IDE Interface Base Address
 	add dx,SELECT_DRIVE_AND_HEAD_REGISTER
 	mov al,[bp-6]			; Master/Slave
 	out dx,al
 
-	mov dx,[bp-2]			; IDE Interface Base Address
+	mov dx,[bp-2]				; IDE Interface Base Address
 	add dx,COMMAND_REGISTER
 	mov al,ATA_IDENTIFY_DEVICE_COMMAND
 	out dx,al
 
 .waitDRQ:
-	mov dx,[bp-2]			; IDE Interface Base Address
+	mov dx,[bp-2]				; IDE Interface Base Address
 	add dx,STATUS_REGISTER
 
 .checkDRQ:
@@ -150,7 +152,7 @@ identifyDevice:
 	and al,STATUS_REGISTER_DRQ
 	jz .checkDRQ
 
-	mov dx,[bp-2]			; IDE Interface Base Address
+	mov dx,[bp-2]				; IDE Interface Base Address
 	add dx,DATA_REGISTER
 
 	mov di,IDE_DEVICE_DATA
@@ -160,13 +162,13 @@ identifyDevice:
 
 	cld
 
-	rep insw			; fill the buffer with device data
+	rep insw				; fill the buffer with device data
 
 	sti
 
 	call processIDEDeviceData
 
-	xor al,al			; assume success
+	xor al,al				; assume success
 
 	jmp .exit
 
@@ -177,11 +179,11 @@ identifyDevice:
 
 	cld
 
-	rep stosw			; fill the buffer with device data
+	rep stosw				; fill the buffer with device data
 
 	call processIDEDeviceData
 
-	mov al,1			; assume error
+	mov al,1				; assume error
 
 .exit:
 	pop ds
@@ -210,7 +212,7 @@ processIDEDeviceData:
 	; TODO : is DS required?
 	push ds
 	push cs
-	pop ds				; DS:SI = CS:SI
+	pop ds					; DS:SI = CS:SI
 
 	mov si,IDE_DEVICE_DATA
 
@@ -241,20 +243,20 @@ processIDEDeviceData:
 	add si,20
 	mov di,IDE_DEVICE_SERIAL
 
-	mov cx,10			; read 20 characters (10 words)
+	mov cx,10				; read 20 characters (10 words)
 	call copyWordsExchangeBytes
 
 .fillRevision:
 	add si,6
 	mov di,IDE_DEVICE_REVISION
 
-	mov cx,4			; read 8 characters (4 words)
+	mov cx,4				; read 8 characters (4 words)
 	call copyWordsExchangeBytes
 
 .fillModel:
 	mov di,IDE_DEVICE_MODEL
 
-	mov cx,10			; read 40 characters (20 words)
+	mov cx,10				; read 40 characters (20 words)
 	call copyWordsExchangeBytes
 
 	pop ds
@@ -281,7 +283,7 @@ copyWordsExchangeBytes:
 
 	loop .nextByte
 
-	xor al,al			; null-terminated string
+	xor al,al				; null-terminated string
 	stosb
 
 	ret

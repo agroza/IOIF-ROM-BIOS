@@ -23,8 +23,8 @@ section .text
 moveCursor:
 	push bx
 
-	mov ah,02h			; set cursor position
-	xor bh,bh			; video page 0
+	mov ah,02h				; set cursor position
+	xor bh,bh				; video page 0
 	int 10h
 
 	pop bx
@@ -42,15 +42,15 @@ moveCursor:
 ;     none
 ; ---------------------------------------------------------------------------
 CRLF:
-	mov ah,03h			; get cursor position
-	xor bh,bh			; video page 0
+	mov ah,03h				; get cursor position
+	xor bh,bh				; video page 0
 	int 10h
 
-	xor dl,dl			; first column
+	xor dl,dl				; first column
 
-	cmp dh,VIDEO_ROW_COUNT-1	; last row?
+	cmp dh,VIDEO_ROW_COUNT-1		; last row?
 	jz .scrollUp
-	inc dh				; next row
+	inc dh					; next row
 	call moveCursor
 
 	jmp .exit
@@ -58,15 +58,15 @@ CRLF:
 .scrollUp:
 	call moveCursor
 
-	mov ah,08h			; read character and attribute at cursor position
+	mov ah,08h				; read character and attribute at cursor position
 	int 10h
-	mov bh,ah			; attribute to pass to function 06h
+	mov bh,ah				; attribute to pass to function 06h
 
-	mov ah,06h			; scroll up window
-	mov al,1			; by one line
-	xor cx,cx			; row,column = 0,0
-	mov dh,VIDEO_ROW_COUNT-1	; last row
-	mov dl,VIDEO_COLUMN_COUNT-1	; last column
+	mov ah,06h				; scroll up window
+	mov al,1				; by one line
+	xor cx,cx				; row,column = 0,0
+	mov dh,VIDEO_ROW_COUNT-1		; last row
+	mov dl,VIDEO_COLUMN_COUNT-1		; last column
 	int 10h
 
 .exit:
@@ -90,14 +90,14 @@ calculatePosition:
 	mov cx,dx
 
 	xor ah,ah
-	mov al,ch			; row
+	mov al,ch				; row
 	xor bh,bh
 	mov bl,VIDEO_COLUMN_COUNT
 	mul bx
-	shl ax,1			; multiply by 2
+	shl ax,1				; multiply by 2
 	xor dh,dh
-	mov dl,cl			; column
-	shl dx,1			; multiply by 2
+	mov dl,cl				; column
+	shl dx,1				; multiply by 2
 	add ax,dx
 
 	pop dx
@@ -131,19 +131,19 @@ highlightRegion:
 	push es
 
 	mov ax,VIDEO_RAM_SEGMENT
-	mov ds,ax			; DS:SI = 0B800h:SI
-	mov es,ax			; ES:DI = 0B800h:DI
+	mov ds,ax				; DS:SI = 0B800h:SI
+	mov es,ax				; ES:DI = 0B800h:DI
 
 	call calculatePosition
 
 	mov si,ax
-	mov di,ax			; ES:DI = (dh * 80 + dl) * 2
+	mov di,ax				; ES:DI = (dh * 80 + dl) * 2
 
 	cld
 
 .doHighlight:
 	lodsw
-	mov ah,[bp-1]			; attribute from stack (original ax)
+	mov ah,[bp-1]				; attribute from stack (original ax)
 	stosw
 
 	loop .doHighlight
@@ -186,12 +186,12 @@ directWriteChar:
 	push es
 
 	mov ax,VIDEO_RAM_SEGMENT
-	mov es,ax			; ES:DI = 0B800h:DI
+	mov es,ax				; ES:DI = 0B800h:DI
 
 	call calculatePosition
 
-	mov di,ax			; ES:DI = (dh * 80 + dl) * 2
-	mov ax,[bp-2]			; (attribute|character) from stack (original ax)
+	mov di,ax				; ES:DI = (dh * 80 + dl) * 2
+	mov ax,[bp-2]				; (attribute|character) from stack (original ax)
 
 	cld
 
@@ -231,10 +231,10 @@ directWrite:
 	push es
 
 	mov ax,VIDEO_RAM_SEGMENT
-	mov es,ax			; ES:DI = 0B800h:SI
+	mov es,ax				; ES:DI = 0B800h:SI
 
-	mov ah,03h			; get cursor position
-	xor bh,bh			; video page 0
+	mov ah,03h				; get cursor position
+	xor bh,bh				; video page 0
 	int 10h
 
 	cld
@@ -242,35 +242,35 @@ directWrite:
 .computePosition:
 	call calculatePosition
 
-	mov di,ax			; ES:DI = (ch * 80 + cl) * 2
-	mov ah,[bp-1]			; attribute from stack (original ah)
+	mov di,ax				; ES:DI = (ch * 80 + cl) * 2
+	mov ah,[bp-1]				; attribute from stack (original ah)
 
 .nextByte:
-	lodsb				; load byte from DS:SI
+	lodsb					; load byte from DS:SI
 
-	or al,al			; end of string?
+	or al,al				; end of string?
 	jz .exit
-	cmp al,13			; carriage return?
+	cmp al,13				; carriage return?
 	jz .CR
-	cmp al,10			; line feed?
+	cmp al,10				; line feed?
 	jz .LF
 
-	stosw				; store word (attribute|character) in ES:DI
+	stosw					; store word (attribute|character) in ES:DI
 
-	inc dl				; next column
+	inc dl					; next column
 
 	jmp .nextByte
 
 .CR:
-	mov dl,0			; first column
+	mov dl,0				; first column
 	call moveCursor
 
 	jmp .computePosition
 
 .LF:
-	cmp dh,VIDEO_ROW_COUNT-1	; last row?
+	cmp dh,VIDEO_ROW_COUNT-1		; last row?
 	jz .scrollUp
-	inc dh				; next row
+	inc dh					; next row
 	call moveCursor
 
 	jmp .computePosition
@@ -278,20 +278,20 @@ directWrite:
 .scrollUp:
 	call moveCursor
 
-	push dx				; save row,column
+	push dx					; save row,column
 
-	mov ah,08h			; read character and attribute at cursor position
+	mov ah,08h				; read character and attribute at cursor position
 	int 10h
-	mov bh,ah			; attribute to pass to function 06h
+	mov bh,ah				; attribute to pass to function 06h
 
-	mov ah,06h			; scroll up window
-	mov al,1			; by one line
-	xor cx,cx			; row,column = 0,0
-	mov dh,VIDEO_ROW_COUNT-1	; last row
-	mov dl,VIDEO_COLUMN_COUNT-1	; last column
+	mov ah,06h				; scroll up window
+	mov al,1				; by one line
+	xor cx,cx				; row,column = 0,0
+	mov dh,VIDEO_ROW_COUNT-1		; last row
+	mov dl,VIDEO_COLUMN_COUNT-1		; last column
 	int 10h
 
-	pop dx				; restore row,column
+	pop dx					; restore row,column
 
 	; TODO : Should it be .computePosition ?
 
@@ -356,31 +356,31 @@ directWriteInteger:
 	push cx
 	push dx
 
-	mov bx,10			; base-10
+	mov bx,10				; base-10
 
-	xor cx,cx			; number of digits
+	xor cx,cx				; number of digits
 
 .nextDigit:
 	xor dx,dx
-	div bx				; dx = dx:ax % bx
-	add dx,30h			; convert to character
+	div bx					; dx = dx:ax % bx
+	add dx,30h				; convert to character
 
-	push dx				; save digit (dl)
+	push dx					; save digit (dl)
 
-	inc cx				; next digit
+	inc cx					; next digit
 
 	or ax,ax
 	jnz .nextDigit
 
 .printDigit:
-	pop dx				; load digit (dl)
+	pop dx					; load digit (dl)
 
-	mov ah,[bp-1]			; stored bh = color attribute
+	mov ah,[bp-1]				; stored bh = color attribute
 	mov al,dl
-	mov dx,[bp-6]			; stored dx = row,column
+	mov dx,[bp-6]				; stored dx = row,column
 	call directWriteChar
 
-	inc byte [bp-6]			; next column
+	inc byte [bp-6]				; next column
 	call moveCursor
 
 	loop .printDigit
@@ -410,18 +410,18 @@ delay:
 	push ds
 
 	xor ax,ax
-	mov ds,ax			; DS:SI = 0000h:SI
+	mov ds,ax				; DS:SI = 0000h:SI
 
-	mov ax,18			; 18 Hz
-	mul cx				; how many seconds
-	xchg ax,cx			; result in cx
-	mov bx,[46Ch]			; BIOS timer count is updated at 18.2 Hz
+	mov ax,18				; 18 Hz
+	mul cx					; how many seconds
+	xchg ax,cx				; result in cx
+	mov bx,[46Ch]				; BIOS timer count is updated at 18.2 Hz
 
 .nextUpdate:
-	mov ax,[46Ch]			; BIOS timer count is updated at 18.2 Hz
-	cmp ax,bx			; same timer count?
+	mov ax,[46Ch]				; BIOS timer count is updated at 18.2 Hz
+	cmp ax,bx				; same timer count?
 	je .nextUpdate
-	mov bx,ax			; store the new compare value
+	mov bx,ax				; store the new compare value
 	loop .nextUpdate
 
 	pop ds

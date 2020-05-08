@@ -34,7 +34,7 @@ section .text
 
 	DB 0,'I/O-IF ROM #0',0
 
-;%include ".\source\debug.asm"
+;%include ".\source\debug\debug.asm"
 %include ".\source\routines.asm"
 %include ".\source\cmos.asm"
 %include ".\source\detect.asm"
@@ -44,6 +44,12 @@ section .text
 %include ".\source\include\messages.inc"
 
 ; Initialization Routine
+; Input:
+;     none
+; Output
+;     none
+; Preserves:
+;     AX, BX, CX, DX, SI, DS, ES
 ; ---------------------------------------------------------------------------
 start:
 	push ax
@@ -57,8 +63,8 @@ start:
 	xor ax,ax
 	mov ss,ax
 	mov ax,cs
-	mov ds,ax			; DS:SI = CS:SI for entire program
-	mov es,ax			; ES:DI = CS:DI for entire program
+	mov ds,ax				; DS:SI = CS:SI for entire program
+	mov es,ax				; ES:DI = CS:DI for entire program
 
 	mov ah,HIGHLIGHT_TEXT_COLOR
 	mov si,sProgram
@@ -83,11 +89,11 @@ start:
 	mov cx,1
 	call delay
 
-	mov ah,01h			; read the state of the keyboard buffer
+	mov ah,01h				; read the state of the keyboard buffer
 	int 16h
 	jz .autodetectIDEDevices
 
-	mov ah,00h			; read key press
+	mov ah,00h				; read key press
 	int 16h
 
 	cmp ax,KEYBOARD_DEL
