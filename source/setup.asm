@@ -380,35 +380,57 @@ detectIDEDevicesParameters:
 
 	ret
 
-; Allows editing of one IDE Device Parameter.
+; Allows editing of the given IDE Device Parameter.
 ; Input:
-;     none
+;     AX - pointer to the parameter
 ; Output:
 ;     none
+; Affects:
+;     FLAGS
 ; Preserves:
-;     AX, CX, DX
+;     AX, BX, CX, DX, SI
 ; ---------------------------------------------------------------------------
 editIDEDeviceParameter:
-	push ax
-	push bx
+	push bp
+	mov bp,sp
+
+	sub sp,2				; input value
+
+	push ax					; bp - 4 = IDE Device Parameter
+	push bx					; bh - parameter ID
 	push cx
 	push dx
+	push si
 
-	mov cx,1					; write one time
-	inc dl						; column
+	; TODO : Optimize the entire function.
 
-	xor bl,bl					; decimal digit counter
+	call calculataIDEDevicesDataOffset
+	mov si,ax
+
+	mov bx,[bp-6]				; stored bx
+	xchg bh,bl				; move the IDE Device Parameter in bl
+	xor bh,bh				; ignore high byte
+	shl bx,1				; multiply by word size
+
+	add si,bx				; relative parameter
+
+	mov cx,1				; write one time
+	inc dl					; column
+
+	xor bl,bl				; decimal digit counter
+
+	mov word [bp - 2],0			; start with input value 0
 
 .editParameterLoop:
-	mov ah,01h					; read the state of the keyboard buffer
+	mov ah,01h				; read the state of the keyboard buffer
 	int 16h
 	jz .editParameterLoop
 
-	mov ah,00h					; read key press
+	mov ah,00h				; read key press
 	int 16h
 
 	cmp ax,KEYBOARD_ESC
-	je .exit
+	je .exitNoSave
 	cmp ax,KEYBOARD_ENTER
 	je .exitSave
 	cmp ax,KEYBOARD_BACKSPACE
@@ -423,9 +445,46 @@ editIDEDeviceParameter:
 	inc bl
 
 	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
+
+	cmp bl,1				; first digit?
+	jne .skipClear
+
+	; TODO : Refactor or extract this Ugly routine.
+
+	push ax
+	push cx
+	push dx
+
+	mov cx,5				; clear the visual input
+	mov al,20h				; empty space
 	call directWriteChar
 
-	; TOOD : generate decimal number
+	pop dx
+	pop cx
+	pop ax
+
+.skipClear:
+	call directWriteChar
+
+	push bx
+	push dx
+
+	push ax
+
+	mov ax,[bp - 2]
+	xor bh,bh
+	mov bl,10
+	mul bx
+	mov [bp - 2],ax
+
+	pop ax
+
+	xor ah,ah
+	sub al,30h				; convert to decimal
+	add [bp - 2],ax				; update the input value
+
+	pop dx
+	pop bx
 
 	inc dl					; column
 
@@ -439,22 +498,63 @@ editIDEDeviceParameter:
 	dec dl					; column
 
 	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
-	mov al,' '
+	mov al,20h				; empty space
 	call directWriteChar
 
-	; TODO : generate decimal number
-	xor al,al
+	push bx
+	push dx
+
+	xor dx,dx
+
+	mov ax,[bp - 2]
+	xor bh,bh
+	mov bl,10
+	div bx
+	mov [bp - 2],ax				; update the input value
+
+	pop dx
+	pop bx
 
 	jmp .editParameterLoop
 
+.exitNoSave:
+	mov ax,[si]				; original value
+	mov dx,[bp - 10]			; original row,column
+	inc dl					; column
+
+	; TODO : Refactor or extract this Ugly routine.
+
+	push ax
+	push cx
+	push dx
+
+	mov cx,5				; clear the visual input
+	mov al,20h				; empty space
+	call directWriteChar
+
+	pop dx
+	pop cx
+	pop ax
+
+	call directWriteInteger
+
+	jmp .exit
+
 .exitSave:
-	; TODO : Save the value.
+	mov ax,[bp - 2]				; input value
+	mov [si],ax
+
+	; TODO : Extract the size calculation routine.
 
 .exit:
+	pop si
 	pop dx
 	pop cx
 	pop bx
 	pop ax
+
+	mov sp,bp
+	pop bp
 
 	ret
 
@@ -518,13 +618,19 @@ editIDEDevicesParameters:
 .executeAction:
 	or bh,bh				; skip first region
 	je .editParametersLoop
-	cmp bh,IDE_DEVICE_REGION_COUNT-1	; skip last region
+	cmp bh,IDE_DEVICE_REGION_COUNT - 1	; skip last region
 	je .editParametersLoop
 
 	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
 	call highlightRegion
 
+	push bx
+
+	sub bh,1				; skip TYPE, bh now holds editable parameter index
+	sub bl,IDE_DEVICES_REGION_TOP		; infer IDE Device index from bl (row = ID)
 	call editIDEDeviceParameter
+
+	pop bx
 
 	mov ah,BIOS_SELECTED_COLOR
 	call highlightRegion
@@ -719,7 +825,7 @@ deviceInformation:
 	mov cl,IDE_DEVICE_INFO_VALUE_OFFSET	; starting column
 	call clearDeviceInformation
 
-	sub bl,IDE_DEVICES_REGION_TOP		; Infer IDE Device index from bl (row = ID)
+	sub bl,IDE_DEVICES_REGION_TOP		; infer IDE Device index from bl (row = ID)
 	call calculataIDEDevicesDataOffset
 
 	mov bx,ax
@@ -754,7 +860,7 @@ deviceInformation:
 	mov si,sIDEDeviceFeaturesList
 	call directWriteAt
 
-	; TODO : This test is fishy.
+	; TODO : Testing for cylinders <> 0. It is ugly and needs refactor.
 
 	cmp word [bx],0				; no cylinders?
 	je .exit
@@ -763,6 +869,8 @@ deviceInformation:
 	xor bx,bx				; extra condition is false
 
 	dec dh					; row
+
+	; TODO : Static IDE_DEVICES_DATA addressing is wrong. They should rely on BX. Or better an indexable register.
 
 .highlightType:
 	mov ah,[IDE_DEVICES_DATA + IDE_DEVICES_DATA_GENERAL_HIGH_OFFSET]
@@ -828,6 +936,8 @@ deviceInformation:
 ;     none
 ; Output:
 ;     none
+; Affects:
+;     FLAGS, AX, SI 
 ; Preserves:
 ;     BX, CX, DX
 ; ---------------------------------------------------------------------------

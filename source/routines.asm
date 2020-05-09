@@ -143,7 +143,7 @@ highlightRegion:
 
 .doHighlight:
 	lodsw
-	mov ah,[bp-1]				; attribute from stack (original ax)
+	mov ah,[bp - 1]				; attribute from stack (original ax)
 	stosw
 
 	loop .doHighlight
@@ -191,7 +191,7 @@ directWriteChar:
 	call calculatePosition
 
 	mov di,ax				; ES:DI = (dh * 80 + dl) * 2
-	mov ax,[bp-2]				; (attribute|character) from stack (original ax)
+	mov ax,[bp - 2]				; (attribute|character) from stack (original ax)
 
 	cld
 
@@ -243,7 +243,7 @@ directWrite:
 	call calculatePosition
 
 	mov di,ax				; ES:DI = (ch * 80 + cl) * 2
-	mov ah,[bp-1]				; attribute from stack (original ah)
+	mov ah,[bp - 1]				; attribute from stack (original ah)
 
 .nextByte:
 	lodsb					; load byte from DS:SI
@@ -375,12 +375,12 @@ directWriteInteger:
 .printDigit:
 	pop dx					; load digit (dl)
 
-	mov ah,[bp-1]				; stored bh = color attribute
+	mov ah,[bp - 1]				; stored bh = color attribute
 	mov al,dl
-	mov dx,[bp-6]				; stored dx = row,column
+	mov dx,[bp - 6]				; stored dx = row,column
 	call directWriteChar
 
-	inc byte [bp-6]				; next column
+	inc byte [bp - 6]			; next column
 	call moveCursor
 
 	loop .printDigit

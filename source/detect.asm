@@ -97,7 +97,7 @@ identifyDevice:
 	cld
 
 .wait400ns:
-	mov dx,[bp-4]				; IDE Interface Control Address
+	mov dx,[bp - 4]				; IDE Interface Control Address
 	add dx,ALTERNATE_STATUS_REGISTER
 
 	mov cl,3
@@ -107,7 +107,7 @@ identifyDevice:
 	jnz .nextRead
 
 .checkBSY:
-	mov dx,[bp-2]				; IDE Interface Base Address
+	mov dx,[bp - 2]				; IDE Interface Base Address
 	add dx,STATUS_REGISTER
 
 	mov ax,18				; 18 Hz
@@ -129,7 +129,7 @@ identifyDevice:
 	jmp .clearATAIdentifyDeviceData		; time-out, assume error
 
 .checkDRDY:
-	mov dx,[bp-2]				; IDE Interface Base Address
+	mov dx,[bp - 2]				; IDE Interface Base Address
 	add dx,STATUS_REGISTER
 
 	mov ax,18				; 18 Hz
@@ -153,18 +153,18 @@ identifyDevice:
 .sendIdentifyCommand:
 	cli
 
-	mov dx,[bp-2]				; IDE Interface Base Address
+	mov dx,[bp - 2]				; IDE Interface Base Address
 	add dx,SELECT_DRIVE_AND_HEAD_REGISTER
-	mov al,[bp-6]			; Master/Slave
+	mov al,[bp - 6]			; Master/Slave
 	out dx,al
 
-	mov dx,[bp-2]				; IDE Interface Base Address
+	mov dx,[bp - 2]				; IDE Interface Base Address
 	add dx,COMMAND_REGISTER
 	mov al,ATA_IDENTIFY_DEVICE_COMMAND
 	out dx,al
 
 .waitDRQ:
-	mov dx,[bp-2]				; IDE Interface Base Address
+	mov dx,[bp - 2]				; IDE Interface Base Address
 	add dx,STATUS_REGISTER
 
 .checkDRQ:
@@ -172,7 +172,7 @@ identifyDevice:
 	and al,STATUS_REGISTER_DRQ
 	jz .checkDRQ
 
-	mov dx,[bp-2]				; IDE Interface Base Address
+	mov dx,[bp - 2]				; IDE Interface Base Address
 	add dx,DATA_REGISTER
 
 	mov di,ATA_IDENTIFY_DEVICE_DATA
@@ -184,7 +184,7 @@ identifyDevice:
 
 	sti
 
-	mov bx,[bp-6]
+	mov bx,[bp - 6]
 	call processATAIdentifyDeviceData
 
 	xor al,al				; assume success
@@ -198,7 +198,7 @@ identifyDevice:
 
 	rep stosw				; fill the buffer with device data
 
-	mov bx,[bp-6]
+	mov bx,[bp - 6]
 	call processATAIdentifyDeviceData
 
 	mov al,1				; assume error
