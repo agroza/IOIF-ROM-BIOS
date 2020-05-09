@@ -24,6 +24,7 @@ PS: I was once skilled in assembly language and I used TASM and TLINK on a daily
 * Technically, the I/O Interface ISA card could work with 8-bit machines. But by design, the IDE interfaces are hard-wired for 16-bit ISA slots. That is why I use an 8-bit CPU detection mechanism to enable or disable the ROM BIOS.
 * Given the consideration above, I tend to use the 80286 instruction set rather than 8086 one.
 * Since I am aiming for minimal ROM usage, my coding style for this project could easily prove partially not understandable. For the same reason, I am stripping down any unnecessary instructions from the routines that I write. I am trying to document things as much as I can.
+* I try to avoid programming best practices such as writing defensive code. While it is very nice and helps troubleshoot bugs, it all quickly adds up eating precious ROM bytes.
 * This codebase only works as a whole. It might need heavy refactoring if you want to isolate portions of it to use in other projects.
 
 ### Toolchain:
