@@ -68,6 +68,8 @@ start:
 	mov ds,ax				; DS:SI = CS:SI for entire program
 	mov es,ax				; ES:DI = CS:DI for entire program
 
+	call clearIDEDevicesData
+
 	mov ah,HIGHLIGHT_TEXT_COLOR
 	mov si,sProgram
 	call directWrite
@@ -85,8 +87,6 @@ start:
 	jmp .exit
 
 .continue:
-	call clearIDEDevicesData
-
 	mov si,sPressDELKey
 	call directWrite
 

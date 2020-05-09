@@ -58,7 +58,7 @@ check8bitCPU:
 ; ---------------------------------------------------------------------------
 clearIDEDevicesData:
 	mov di,IDE_DEVICES_DATA
-	mov ax,00h
+	xor ax,ax
 	mov cx,IDE_DEVICES_DATA_SIZE * IDE_DEVICES_DATA_DEVICES_COUNT
 
 	cld
@@ -74,9 +74,9 @@ clearIDEDevicesData:
 ;     AL - 0 = success; 1 = error
 ;     ATA_IDENTIFY_DEVICE_DATA - filled with data if sucess, zeroes if error
 ; Affects:
-;     AX, BX, CX
+;     FLAGS, AX, BX, CX
 ; Preserves:
-;     FLAGS, DX, SI, DI, DS
+;     DX, SI, DI, DS
 ; ---------------------------------------------------------------------------
 identifyDevice:
 	push bp
@@ -86,7 +86,6 @@ identifyDevice:
 	push word [si + IDE_INTERFACE_CONTROL_ADDRESS]
 	push word [si + IDE_INTERFACE_DEVICE]
 
-	pushf
 	push dx
 	push si
 	push di
@@ -94,6 +93,8 @@ identifyDevice:
 
 	xor ax,ax
 	mov ds,ax				; DS:SI = 0000h:SI
+
+	cld
 
 .wait400ns:
 	mov dx,[bp-4]				; IDE Interface Control Address
@@ -179,8 +180,6 @@ identifyDevice:
 
 	; TODO : Optimize this part.
 
-	cld
-
 	rep insw				; fill the buffer with device data
 
 	sti
@@ -197,8 +196,6 @@ identifyDevice:
 	mov ax,00h
 	mov cx,256
 
-	cld
-
 	rep stosw				; fill the buffer with device data
 
 	mov bx,[bp-6]
@@ -211,10 +208,33 @@ identifyDevice:
 	pop di
 	pop si
 	pop dx
-	popf
 
 	mov sp,bp
 	pop bp
+
+	ret
+
+
+; Returns the position within IDE_DEVICES_DATA, based on the given Device ID.
+; Input:
+;     BL - IDE Device ID
+; Output:
+;     AX - position within IDE_DEVICES_DATA
+; Affects:
+;     BH
+; Preserves:
+;     DX
+; ---------------------------------------------------------------------------
+calculataIDEDevicesDataOffset:
+	push dx
+
+	xor ah,ah
+	mov ax,IDE_DEVICES_DATA_SIZE
+	xor bh,bh
+	mul bx
+	add ax,IDE_DEVICES_DATA
+
+	pop dx
 
 	ret
 
@@ -229,27 +249,18 @@ identifyDevice:
 ;     DX, DS
 ; ---------------------------------------------------------------------------
 processATAIdentifyDeviceData:
-	; TODO : is DS required? But ES ?
+	; TODO : is DS required?
 	push ds
 	push cs
 	pop ds					; DS:SI = CS:SI
 
-	; calculate position
+	xchg bh,bl				; IDE Device ID needs to be in bl
+	call calculataIDEDevicesDataOffset
 
-	push dx
-
-	xor ah,ah
-	mov al,IDE_DEVICES_DATA_SIZE
-	xor bl,bl
-	xchg bh,bl
-	mul bx
-	add ax,IDE_DEVICES_DATA
-	mov bx,ax
-
-	pop dx
+	push ax					; save IDE_DEVICES_DATA offset
 
 	mov si,ATA_IDENTIFY_DEVICE_DATA
-	mov di,bx
+	mov di,ax
 
 .copyParameters:
 	mov ax,[si + ATA_IDENTIFY_DEVICE_CYLINDERS_OFFSET]
@@ -279,10 +290,12 @@ processATAIdentifyDeviceData:
 
 	; TODO : Extract constants separately.
 
+	pop ax					; restore IDE_DEVICES_DATA offset
+
 .fillSerial:
 	add si,20
 
-	mov di,bx
+	mov di,ax
 	add di,IDE_DEVICES_DATA_SERIAL_OFFSET
 
 	mov cx,10				; read 20 characters (10 words)
@@ -290,9 +303,6 @@ processATAIdentifyDeviceData:
 
 .fillRevision:
 	add si,6
-
-	mov di,bx
-	add di,IDE_DEVICES_DATA_REVISION_OFFSET
 
 	mov cx,4				; read 8 characters (4 words)
 	call copyWordsExchangeBytes

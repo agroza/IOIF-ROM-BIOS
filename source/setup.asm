@@ -14,6 +14,8 @@ section .text
 ;     none
 ; Output:
 ;     none
+; Affects:
+;     FLAGS, AX, CX, DX, SI
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
@@ -203,34 +205,23 @@ drawSetupTUI:
 ; Output:
 ;     none
 ; Affects:
-;     SI, DI
+;     FLAGS, SI, DI
 ; Preserves:
-;     FLAGS, AX, BX, CX, DX
+;     AX, BX, CX, DX
 ; ---------------------------------------------------------------------------
 drawParameters:
 	push bp
 	mov bp,sp
 
-	pushf
 	push ax
 	push bx
 	push cx
 	push dx
 
-	; calculate ide_device_position
-
-	push dx
-
-	mov ax,IDE_DEVICES_DATA_SIZE
-	mov bx,[si + IDE_INTERFACE_DEVICE]	; get device ID
-	xor bl,bl
-	xchg bh,bl
-	mul bx
-	add ax,IDE_DEVICES_DATA
+	mov bl,[si + IDE_INTERFACE_DEVICE + 1]	; get device ID
+	call calculataIDEDevicesDataOffset
 
 	mov di,ax
-
-	pop dx
 
 	mov ah,BIOS_TEXT_COLOR
 
@@ -307,7 +298,6 @@ drawParameters:
 	pop cx
 	pop bx
 	pop ax
-	popf
 
 	mov sp,bp
 	pop bp
@@ -319,6 +309,8 @@ drawParameters:
 ;     none
 ; Output:
 ;     none
+; Affects:
+;     FLAGS, AH, CX, DL
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
@@ -336,10 +328,14 @@ highlightDetection:
 ;     none
 ; Output:
 ;     none
+; Affects:
+;     SI
 ; Preserves:
 ;     AX, BX, CX, DX
 ; ---------------------------------------------------------------------------
 detectIDEDevicesParameters:
+	; TODO : Are all these registers necessary?
+
 	push ax
 	push bx
 	push cx
@@ -467,6 +463,8 @@ editIDEDeviceParameter:
 ;     none
 ; Output:
 ;     none
+; Affects:
+;     FLAGS
 ; Preserves:
 ;     AX, BX, CX, DX, SI, DI
 ; ---------------------------------------------------------------------------
@@ -644,6 +642,8 @@ editIDEDevicesParameters:
 ;     CX - feature string length
 ; Output:
 ;     none
+; Affects:
+;     FLAGS
 ; Preserves:
 ;     AX
 ; ---------------------------------------------------------------------------
@@ -676,6 +676,31 @@ highlightFeature:
 
 	ret
 
+; Clears the IDE Device Information region, starting at the given column.
+; Input:
+;     CL - starting column
+; Output:
+;     none
+; Affects:
+;     AX, BH
+; Preserves:
+;     DX
+; ---------------------------------------------------------------------------
+clearDeviceInformation:
+	push dx
+
+	mov ah,06h				; scroll up window
+	mov al,VIDEO_ROW_COUNT			; by screen height
+	mov bh,BIOS_TEXT_COLOR			; attribute to pass to function 06h
+	mov ch,11				; row
+	mov dh,VIDEO_ROW_COUNT - 4		; last row - 1
+	mov dl,VIDEO_COLUMN_COUNT - 2		; last column - 1
+	int 10h
+
+	pop dx
+
+	ret
+
 ; Displays information about the selected IDE Device.
 ; Input:
 ;     BL - device ID
@@ -691,37 +716,14 @@ deviceInformation:
 	push cx
 	push dx
 
-	; TODO : Ugly and not optimized. Reconsider refactoring.
+	mov cl,IDE_DEVICE_INFO_VALUE_OFFSET	; starting column
+	call clearDeviceInformation
 
-	push ax
-	push bx
-	push cx
-	push dx
-
-	mov ah,06h				; scroll up window
-	mov al,VIDEO_ROW_COUNT			; by screen height
-	mov bh,BIOS_TEXT_COLOR			; attribute to pass to function 06h
-	mov ch,11				; row
-	mov cl,IDE_DEVICE_INFO_VALUE_OFFSET	; column
-	mov dh,VIDEO_ROW_COUNT - 4		; last row - 1
-	mov dl,VIDEO_COLUMN_COUNT - 2		; last column - 1
-	int 10h
-
-	pop dx
-	pop cx
-	pop bx
-	pop ax
-
-	push dx
-
-	mov ax,IDE_DEVICES_DATA_SIZE
-	xor bh,bh
 	sub bl,IDE_DEVICES_REGION_TOP		; Infer IDE Device index from bl (row = ID)
-	mul bx
-	add ax,IDE_DEVICES_DATA
-	mov bx,ax
-	pop dx
+	call calculataIDEDevicesDataOffset
 
+	mov bx,ax
+	
 	mov ah,BIOS_TEXT_COLOR
 
 	mov dh,IDE_DEVICE_INFO_TOP
@@ -960,14 +962,8 @@ viewIDEDevicesInformation:
 	mov ah,BIOS_TEXT_COLOR			; destroy any possible selection
 	call highlightRegion
 
-	mov ah,06h				; scroll up window
-	mov al,VIDEO_ROW_COUNT			; by screen height
-	mov bh,BIOS_TEXT_COLOR			; attribute to pass to function 06h
-	mov ch,11				; row
-	mov cl,23				; column
-	mov dh,VIDEO_ROW_COUNT - 4		; last row - 1
-	mov dl,VIDEO_COLUMN_COUNT - 2		; last column - 1
-	int 10h
+	mov cl,23				; starting column
+	call clearDeviceInformation
 
 	pop dx
 	pop cx
@@ -980,6 +976,8 @@ viewIDEDevicesInformation:
 ;     none
 ; Output:
 ;     none
+; Affects:
+;     FLAGS, AX, BX, CX, DX, SI
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
