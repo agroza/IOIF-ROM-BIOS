@@ -48,7 +48,7 @@ CRLF:
 
 	xor dl,dl				; first column
 
-	cmp dh,VIDEO_ROW_COUNT-1		; last row?
+	cmp dh,VIDEO_ROW_COUNT			; last row?
 	jz .scrollUp
 	inc dh					; next row
 	call moveCursor
@@ -65,8 +65,8 @@ CRLF:
 	mov ah,06h				; scroll up window
 	mov al,1				; by one line
 	xor cx,cx				; row,column = 0,0
-	mov dh,VIDEO_ROW_COUNT-1		; last row
-	mov dl,VIDEO_COLUMN_COUNT-1		; last column
+	mov dh,VIDEO_ROW_COUNT			; last row
+	mov dl,VIDEO_COLUMN_COUNT		; last column
 	int 10h
 
 .exit:
@@ -92,7 +92,7 @@ calculatePosition:
 	xor ah,ah
 	mov al,ch				; row
 	xor bh,bh
-	mov bl,VIDEO_COLUMN_COUNT
+	mov bl,VIDEO_COLUMN_COUNT + 1
 	mul bx
 	shl ax,1				; multiply by 2
 	xor dh,dh
@@ -268,7 +268,7 @@ directWrite:
 	jmp .computePosition
 
 .LF:
-	cmp dh,VIDEO_ROW_COUNT-1		; last row?
+	cmp dh,VIDEO_ROW_COUNT			; last row?
 	jz .scrollUp
 	inc dh					; next row
 	call moveCursor
@@ -287,8 +287,8 @@ directWrite:
 	mov ah,06h				; scroll up window
 	mov al,1				; by one line
 	xor cx,cx				; row,column = 0,0
-	mov dh,VIDEO_ROW_COUNT-1		; last row
-	mov dl,VIDEO_COLUMN_COUNT-1		; last column
+	mov dh,VIDEO_ROW_COUNT			; last row
+	mov dl,VIDEO_COLUMN_COUNT		; last column
 	int 10h
 
 	pop dx					; restore row,column

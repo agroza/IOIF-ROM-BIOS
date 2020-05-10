@@ -24,7 +24,7 @@ drawSetupTUI:
 
 .drawHorizontalFrames:
 	mov al,0CDh				; horizontal frame
-	mov cx,VIDEO_COLUMN_COUNT - 2
+	mov cx,VIDEO_COLUMN_COUNT - 1
 
 	mov dl,1				; first column
 
@@ -34,16 +34,16 @@ drawSetupTUI:
 	mov dh,3				; row
 	call directWriteChar
 
-	mov dh,VIDEO_ROW_COUNT - 1		; row
+	mov dh,VIDEO_ROW_COUNT			; row
 	call directWriteChar
 
 	mov dh,10				; row
 	call directWriteChar
 
-	mov dh,VIDEO_ROW_COUNT - 3		; row
+	mov dh,VIDEO_ROW_COUNT - 2		; row
 	call directWriteChar
 
-	mov dh,VIDEO_ROW_COUNT - 1		; row
+	mov dh,VIDEO_ROW_COUNT			; row
 	call directWriteChar
 
 .drawVerticalFrames:
@@ -51,7 +51,7 @@ drawSetupTUI:
 	mov cx,1				; write one time
 
 .drawLeftFrame:
-	mov dh,VIDEO_ROW_COUNT - 2
+	mov dh,VIDEO_ROW_COUNT - 1
 	xor dl,dl				; column
 
 .1:
@@ -61,8 +61,8 @@ drawSetupTUI:
 	jae .1
 
 .drawRightFrame:
-	mov dh,VIDEO_ROW_COUNT - 2
-	mov dl,VIDEO_COLUMN_COUNT - 1		; column
+	mov dh,VIDEO_ROW_COUNT - 1
+	mov dl,VIDEO_COLUMN_COUNT		; column
 
 .2:
 	call directWriteChar
@@ -79,17 +79,17 @@ drawSetupTUI:
 
 	mov al,0BBh				; top right of frame
 	xor dh,dh
-	mov dl,VIDEO_COLUMN_COUNT - 1		; top-right = 0,79
+	mov dl,VIDEO_COLUMN_COUNT		; top-right = 0,79
 	call directWriteChar
 
 	mov al,0C8h				; bottom left of frame
-	mov dh,VIDEO_ROW_COUNT - 1
+	mov dh,VIDEO_ROW_COUNT
 	xor dl,dl				; bottom-left = 24,0
 	call directWriteChar
 
 	mov al,0BCh				; bottom right of frame
-	mov dh,VIDEO_ROW_COUNT - 1
-	mov dl,VIDEO_COLUMN_COUNT - 1		; bottom-right = 24,79
+	mov dh,VIDEO_ROW_COUNT
+	mov dl,VIDEO_COLUMN_COUNT		; bottom-right = 24,79
 	call directWriteChar
 
 .drawIntermediaryLeftCorners:
@@ -102,12 +102,12 @@ drawSetupTUI:
 	mov dh,10				; intermediary middle-left
 	call directWriteChar
 
-	mov dh,VIDEO_ROW_COUNT - 3		; intermediary bottom-left of frame
+	mov dh,VIDEO_ROW_COUNT - 2		; intermediary bottom-left of frame
 	call directWriteChar
 
 .drawIntermediaryRightCorners:
 	mov al,0B9h				; intermediary upper-right of frame
-	mov dl,VIDEO_COLUMN_COUNT - 1		; column
+	mov dl,VIDEO_COLUMN_COUNT		; column
 
 	mov dh,3
 	call directWriteChar
@@ -115,7 +115,7 @@ drawSetupTUI:
 	mov dh,10				; intermediary middle-right of frame
 	call directWriteChar
 
-	mov dh,VIDEO_ROW_COUNT - 3		; intermediary bottom-right of frame
+	mov dh,VIDEO_ROW_COUNT - 2		; intermediary bottom-right of frame
 	call directWriteChar
 
 .drawText:
@@ -202,18 +202,18 @@ drawSetupTUI:
 ; Writes a line of IDE Device parameters and computes Device Size.
 ; Input:
 ;     DH - row
+;     SI - pointer to IDE_INTERFACE_DEVICE_X structure, where X = 0, 1, 2, 3
 ; Output:
 ;     none
 ; Affects:
-;     FLAGS, SI, DI
+;     FLAGS, AX, SI, DI
 ; Preserves:
-;     AX, BX, CX, DX
+;     BX, CX, DX
 ; ---------------------------------------------------------------------------
 drawParameters:
 	push bp
 	mov bp,sp
 
-	push ax
 	push bx
 	push cx
 	push dx
@@ -297,7 +297,6 @@ drawParameters:
 	pop dx
 	pop cx
 	pop bx
-	pop ax
 
 	mov sp,bp
 	pop bp
@@ -329,14 +328,13 @@ highlightDetection:
 ; Output:
 ;     none
 ; Affects:
-;     SI
+;     AX, SI
 ; Preserves:
-;     AX, BX, CX, DX
+;     BX, CX, DX
 ; ---------------------------------------------------------------------------
 detectIDEDevicesParameters:
 	; TODO : Are all these registers necessary?
 
-	push ax
 	push bx
 	push cx
 	push dx
@@ -376,13 +374,38 @@ detectIDEDevicesParameters:
 	pop dx
 	pop cx
 	pop bx
+
+	ret
+
+; Clears the selected Parameter video region.
+; Input:
+;     none
+; Output:
+;     none
+; Affects:
+;     none
+; Preserves:
+;     AX, CX, DX
+; ---------------------------------------------------------------------------
+clearIDEDeviceParameterRegion:
+	push ax
+	push cx
+	push dx
+
+	mov cx,IDE_DEVICE_REGION_EDIT_DIGIT_COUNT
+	mov al,20h				; empty space
+	call directWriteChar
+
+	pop dx
+	pop cx
 	pop ax
 
 	ret
 
 ; Allows editing of the given IDE Device Parameter.
 ; Input:
-;     AX - pointer to the parameter
+;     BH - Y position within IDE_DEVICES_REGION structure (TOP, TOP + 1, TOP + 2, TOP + 3)
+;     BL - region parameter ID
 ; Output:
 ;     none
 ; Affects:
@@ -394,25 +417,27 @@ editIDEDeviceParameter:
 	push bp
 	mov bp,sp
 
-	sub sp,2				; input value
+	sub sp,2				; allocate 2 bytes for input value
 
-	push ax					; bp - 4 = IDE Device Parameter
-	push bx					; bh - parameter ID
+	push bx
 	push cx
 	push dx
 	push si
 
-	; TODO : Optimize the entire function.
+	; TODO : Can this be further optimized?
 
+	sub bh,IDE_DEVICES_REGION_TOP		; infer IDE Device index from bh (row = ID)
+	xchg bh,bl				; switch IDE Device index to bl
 	call calculataIDEDevicesDataOffset
-	mov si,ax
 
-	mov bx,[bp-6]				; stored bx
-	xchg bh,bl				; move the IDE Device Parameter in bl
+	mov si,ax				; IDE_DEVICES_DATA offset
+
+	mov bx,[bp - 4]				; stored bx
 	xor bh,bh				; ignore high byte
+	sub bl,1				; skip TYPE, bl now holds editable parameter index
 	shl bx,1				; multiply by word size
 
-	add si,bx				; relative parameter
+	add si,bx				; offset of parameter in the IDE_DEVICES_DATA memory matrix
 
 	mov cx,1				; write one time
 	inc dl					; column
@@ -440,7 +465,8 @@ editIDEDeviceParameter:
 	cmp al,KEYBOARD_9
 	ja .editParameterLoop
 
-	cmp bl,4
+.readDigit:
+	cmp bl,IDE_DEVICE_REGION_EDIT_DIGIT_COUNT - 1
 	ja .editParameterLoop
 	inc bl
 
@@ -449,19 +475,7 @@ editIDEDeviceParameter:
 	cmp bl,1				; first digit?
 	jne .skipClear
 
-	; TODO : Refactor or extract this Ugly routine.
-
-	push ax
-	push cx
-	push dx
-
-	mov cx,5				; clear the visual input
-	mov al,20h				; empty space
-	call directWriteChar
-
-	pop dx
-	pop cx
-	pop ax
+	call clearIDEDeviceParameterRegion
 
 .skipClear:
 	call directWriteChar
@@ -471,7 +485,7 @@ editIDEDeviceParameter:
 
 	push ax
 
-	mov ax,[bp - 2]
+	mov ax,[bp - 2]				; ax = input value
 	xor bh,bh
 	mov bl,10
 	mul bx
@@ -504,11 +518,10 @@ editIDEDeviceParameter:
 	push bx
 	push dx
 
-	xor dx,dx
-
-	mov ax,[bp - 2]
+	mov ax,[bp - 2]				; ax = input value
 	xor bh,bh
 	mov bl,10
+	xor dx,dx
 	div bx
 	mov [bp - 2],ax				; update the input value
 
@@ -518,40 +531,29 @@ editIDEDeviceParameter:
 	jmp .editParameterLoop
 
 .exitNoSave:
-	mov ax,[si]				; original value
-	mov dx,[bp - 10]			; original row,column
+	mov ax,[si]				; original IDE Device Parameter value
+	mov dx,[bp - 8]				; original row,column
 	inc dl					; column
 
-	; TODO : Refactor or extract this Ugly routine.
-
-	push ax
-	push cx
-	push dx
-
-	mov cx,5				; clear the visual input
-	mov al,20h				; empty space
-	call directWriteChar
-
-	pop dx
-	pop cx
-	pop ax
+	call clearIDEDeviceParameterRegion
 
 	call directWriteInteger
 
 	jmp .exit
 
 .exitSave:
+	; TODO : Bug when pressing ENTER without actually typing anything; clears the number.
+
 	mov ax,[bp - 2]				; input value
 	mov [si],ax
 
-	; TODO : Extract the size calculation routine.
+	; TODO : Extract the size calculation routine. And call it here.
 
 .exit:
 	pop si
 	pop dx
 	pop cx
 	pop bx
-	pop ax
 
 	mov sp,bp
 	pop bp
@@ -577,14 +579,14 @@ editIDEDevicesParameters:
 	push di
 
 .selectFirstItem:
-	xor bh,bh				; initial row
-	mov bl,IDE_DEVICES_REGION_TOP
+	xor bl,bl				; region parameter ID
+	mov bh,IDE_DEVICES_REGION_TOP		; region row
 	mov si,IDE_PARAMETERS_REGIONS
 
 	mov ah,BIOS_SELECTED_COLOR
 	xor ch,ch
 	mov cl,[si + 1]				; region length
-	mov dh,bl				; row
+	mov dh,bh				; row
 	mov dl,[si]				; region offset
 	call highlightRegion
 
@@ -616,21 +618,15 @@ editIDEDevicesParameters:
 	jmp .editParametersLoop
 
 .executeAction:
-	or bh,bh				; skip first region
+	or bl,bl				; skip first region
 	je .editParametersLoop
-	cmp bh,IDE_DEVICE_REGION_COUNT - 1	; skip last region
+	cmp bl,IDE_DEVICE_REGION_COUNT - 1	; skip last region
 	je .editParametersLoop
 
 	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
 	call highlightRegion
 
-	push bx
-
-	sub bh,1				; skip TYPE, bh now holds editable parameter index
-	sub bl,IDE_DEVICES_REGION_TOP		; infer IDE Device index from bl (row = ID)
 	call editIDEDeviceParameter
-
-	pop bx
 
 	mov ah,BIOS_SELECTED_COLOR
 	call highlightRegion
@@ -646,14 +642,14 @@ editIDEDevicesParameters:
 	jmp .editParametersLoop
 
 .moveUp:
-	cmp bl,IDE_DEVICES_REGION_TOP
+	cmp bh,IDE_DEVICES_REGION_TOP
 	je .editParametersLoop
-	dec bl
+	dec bh					; region row
 
 	mov ah,BIOS_SELECTED_COLOR
 	xor ch,ch
 	mov cl,[si + 1]				; region length
-	mov dh,bl				; row
+	mov dh,bh				; row
 	mov dl,[si]				; region offset
 	call highlightRegion
 
@@ -665,14 +661,14 @@ editIDEDevicesParameters:
 	jmp .editParametersLoop
 
 .moveDown:
-	cmp bl,IDE_DEVICES_REGION_BOTTOM
+	cmp bh,IDE_DEVICES_REGION_BOTTOM
 	je .editParametersLoop
-	inc bl
+	inc bh					; region row
 
 	mov ah,BIOS_SELECTED_COLOR
 	xor ch,ch
 	mov cl,[si + 1]				; region length
-	mov dh,bl				; row
+	mov dh,bh				; row
 	mov dl,[si]				; region offset
 	call highlightRegion
 
@@ -684,14 +680,14 @@ editIDEDevicesParameters:
 	jmp .editParametersLoop
 
 .moveLeft:
-	or bh,bh
+	or bl,bl
 	je .editParametersLoop
-	dec bh
+	dec bl					; region parameter ID
 
 	mov ah,BIOS_TEXT_COLOR
 	xor ch,ch
 	mov cl,[si + 1]				; region length
-	mov dh,bl				; row
+	mov dh,bh				; row
 	mov dl,[si]				; region offset
 	call highlightRegion
 
@@ -705,14 +701,14 @@ editIDEDevicesParameters:
 	jmp .editParametersLoop
 
 .moveRight:
-	cmp bh,IDE_DEVICE_REGION_COUNT - 1
+	cmp bl,IDE_DEVICE_REGION_COUNT - 1
 	je .editParametersLoop
-	inc bh
+	inc bl					; region parameter ID
 
 	mov ah,BIOS_TEXT_COLOR
 	xor ch,ch
 	mov cl,[si + 1]				; region length
-	mov dh,bl				; row
+	mov dh,bh				; row
 	mov dl,[si]				; region offset
 	call highlightRegion
 
@@ -796,11 +792,11 @@ clearDeviceInformation:
 	push dx
 
 	mov ah,06h				; scroll up window
-	mov al,VIDEO_ROW_COUNT			; by screen height
+	mov al,VIDEO_ROW_COUNT + 1		; by screen height
 	mov bh,BIOS_TEXT_COLOR			; attribute to pass to function 06h
 	mov ch,11				; row
-	mov dh,VIDEO_ROW_COUNT - 4		; last row - 1
-	mov dl,VIDEO_COLUMN_COUNT - 2		; last column - 1
+	mov dh,VIDEO_ROW_COUNT - 3		; last row - 1
+	mov dl,VIDEO_COLUMN_COUNT - 1		; last column - 1
 	int 10h
 
 	pop dx
@@ -809,11 +805,11 @@ clearDeviceInformation:
 
 ; Displays information about the selected IDE Device.
 ; Input:
-;     BL - device ID
+;     BL - Y position within IDE_DEVICES_REGION structure (TOP, TOP + 1, TOP + 2, TOP + 3)
 ; Output:
 ;     none
 ; Affects:
-;     SI
+;     AX, SI
 ; Preserves:
 ;     BX, CX, DX
 ; ---------------------------------------------------------------------------
@@ -828,7 +824,7 @@ deviceInformation:
 	sub bl,IDE_DEVICES_REGION_TOP		; infer IDE Device index from bl (row = ID)
 	call calculataIDEDevicesDataOffset
 
-	mov bx,ax
+	mov bx,ax				; IDE_DEVICES_DATA offset
 	
 	mov ah,BIOS_TEXT_COLOR
 
@@ -866,14 +862,13 @@ deviceInformation:
 	je .exit
 
 .highlight:
+	mov si,bx				; IDE_DEVICES_DATA offset
 	xor bx,bx				; extra condition is false
 
-	dec dh					; row
-
-	; TODO : Static IDE_DEVICES_DATA addressing is wrong. They should rely on BX. Or better an indexable register.
+	dec dh					; move to General row
 
 .highlightType:
-	mov ah,[IDE_DEVICES_DATA + IDE_DEVICES_DATA_GENERAL_HIGH_OFFSET]
+	mov ah,[si + IDE_DEVICES_DATA_GENERAL_HIGH_OFFSET]
 	mov al,ATA_ID_DEV_GENERAL_FIXED_FLAG
 	mov dl,IDE_DEVICE_GENERAL_FIXED_OFFSET
 	mov cx,IDE_DEVICE_GENERAL_FIXED_LENGTH
@@ -884,7 +879,7 @@ deviceInformation:
 	mov cx,IDE_DEVICE_GENERAL_REMOVABLE_LENGTH
 	call highlightFeature
 
-	mov ah,[IDE_DEVICES_DATA + IDE_DEVICES_DATA_GENERAL_LOW_OFFSET]
+	mov ah,[si + IDE_DEVICES_DATA_GENERAL_LOW_OFFSET]
 
 	mov al,ATA_ID_DEV_GENERAL_NON_MAGNETIC_FLAG
 	add dl,IDE_DEVICE_GENERAL_NON_MAGNETIC_OFFSET
@@ -892,9 +887,9 @@ deviceInformation:
 	call highlightFeature
 
 .highlightFeatures:
-	inc dh					; row
+	inc dh					; move to Features row
 
-	mov ah,[IDE_DEVICES_DATA + IDE_DEVICES_DATA_FEATURES_OFFSET]
+	mov ah,[si + IDE_DEVICES_DATA_FEATURES_OFFSET]
 
 	mov al,ATA_ID_DEV_FEATURE_LBA_FLAG
 	mov dl,IDE_DEVICE_FEATURE_LBA_OFFSET
@@ -906,13 +901,14 @@ deviceInformation:
 	mov cx,IDE_DEVICE_FEATURE_DMA_LENGTH
 	call highlightFeature
 
-	push bx
-
-	; TODO : IORDY availability could be better signalled.
+	; TODO : Refactor this part of the routine.
+	; IORDY availability could be better signalled.
 	; IORDY could be available if drive exists. So bl is number of cylinders.
 
+	push bx
+
 	mov al,ATA_ID_DEV_FEATURE_IORDY_FLAG
-	mov bl,[IDE_DEVICES_DATA + IDE_DEVICES_DATA_CYLINDERS_OFFSET + 1]
+	mov bl,[si + IDE_DEVICES_DATA_CYLINDERS_OFFSET + 1]
 	add dl,IDE_DEVICE_FEATURE_IORDY_OFFSET
 	mov cx,IDE_DEVICE_FEATURE_IORDY_LENGTH
 	call highlightFeature
@@ -1101,16 +1097,16 @@ enterSetup:
 	int 10h
 
 	mov ah,06h				; scroll up window
-	mov al,VIDEO_ROW_COUNT			; by screen height
+	mov al,VIDEO_ROW_COUNT + 1		; by screen height
 	mov bh,BIOS_TEXT_COLOR			; attribute to pass to function 06h
 	xor cx,cx				; row,column = 0,0
-	mov dh,VIDEO_ROW_COUNT - 1		; last row
-	mov dl,VIDEO_COLUMN_COUNT - 1		; last column
+	mov dh,VIDEO_ROW_COUNT			; last row
+	mov dl,VIDEO_COLUMN_COUNT		; last column
 	int 10h
 
 	call drawSetupTUI
 
-	; This will most probably be replaced with a call to read the EEPROM stored parameters.
+	; TODO : This will most probably be replaced with a call to read the EEPROM stored parameters.
 
 	call readCMOSData
 
@@ -1160,6 +1156,8 @@ enterSetup:
 	je .mainMenuDeviceInformation
 	cmp bl,MAIN_MENU_EXIT
 	je .exitSetup
+	cmp bl,MAIN_MENU_SAVE_AND_EXIT
+	je .saveAndExitSetup
 
 	jmp .mainMenuLoop
 
@@ -1241,16 +1239,19 @@ enterSetup:
 
 	jmp .exitMenuLoop
 
+.saveAndExitSetup:
+	; TODO : Call EEPROM save routine.
+
 .exit:
 	xor dx,dx				; row,column = 0,0
 	call moveCursor
 
 	mov ah,06h				; scroll up window
-	mov al,VIDEO_ROW_COUNT			; by screen height
+	mov al,VIDEO_ROW_COUNT + 1		; by screen height
 	mov bh,NORMAL_TEXT_COLOR		; attribute to pass to function 06h
 	xor cx,cx				; row,column = 0,0
-	mov dh,VIDEO_ROW_COUNT - 1		; last row
-	mov dl,VIDEO_COLUMN_COUNT - 1		; last column
+	mov dh,VIDEO_ROW_COUNT			; last row
+	mov dl,VIDEO_COLUMN_COUNT		; last column
 	int 10h
 
 	mov ah,01h				; set text-mode cursor shape
