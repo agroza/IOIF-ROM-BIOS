@@ -36,7 +36,8 @@ section .text
 
 ;%include ".\source\debug\debug.asm"
 %include ".\source\routines.asm"
-%include ".\source\cmos.asm"
+;%include ".\source\cmos.asm"
+%include ".\source\eeprom.asm"
 %include ".\source\detect.asm"
 %include ".\source\setup.asm"
 

@@ -67,6 +67,56 @@ clearIDEDevicesData:
 
 	ret
 
+; Returns the position within IDE_DEVICES_DATA, based on the given Device ID.
+; Input:
+;     BL - IDE Device ID
+; Output:
+;     AX - position within IDE_DEVICES_DATA
+; Affects:
+;     BH
+; Preserves:
+;     DX
+; ---------------------------------------------------------------------------
+calculateIDEDevicesDataOffset:
+	push dx
+
+	xor ah,ah
+	mov ax,IDE_DEVICES_DATA_SIZE
+	xor bh,bh
+	mul bx
+	add ax,IDE_DEVICES_DATA
+
+	pop dx
+
+	ret
+
+; Copies a number of words from SI to DI. Exchanges high and low bytes. Writes null at the end.
+; Input:
+;     SI - source strig
+;     DI - destination string
+;     CX - number of words
+; Output:
+;     none
+; Affects:
+;     FLAGS, AX, SI, DI
+; Preserves:
+;     none
+; ---------------------------------------------------------------------------
+copyWordsExchangeBytes:
+	cld
+
+.nextByte:
+	lodsw
+	xchg ah,al
+	stosw
+
+	loop .nextByte
+
+	xor ax,ax				; null-terminated string
+	stosw
+
+	ret
+
 ; Identification of an IDE device.
 ; Input:
 ;     SI - pointer to IDE_INTERFACE_DEVICE_X structure, where X = 0, 1, 2, 3
@@ -86,6 +136,7 @@ identifyDevice:
 	push word [si + IDE_INTERFACE_CONTROL_ADDRESS]
 	push word [si + IDE_INTERFACE_DEVICE]
 
+	push cx
 	push dx
 	push si
 	push di
@@ -155,7 +206,7 @@ identifyDevice:
 
 	mov dx,[bp - 2]				; IDE Interface Base Address
 	add dx,SELECT_DRIVE_AND_HEAD_REGISTER
-	mov al,[bp - 6]			; Master/Slave
+	mov al,[bp - 6]				; Device (Master/Slave)
 	out dx,al
 
 	mov dx,[bp - 2]				; IDE Interface Base Address
@@ -175,21 +226,17 @@ identifyDevice:
 	mov dx,[bp - 2]				; IDE Interface Base Address
 	add dx,DATA_REGISTER
 
+.fillATAIdentifyDeviceData:
 	mov di,ATA_IDENTIFY_DEVICE_DATA
 	mov cx,256
-
-	; TODO : Optimize this part.
 
 	rep insw				; fill the buffer with device data
 
 	sti
 
-	mov bx,[bp - 6]
-	call processATAIdentifyDeviceData
-
 	xor al,al				; assume success
 
-	jmp .exit
+	jmp .processATAIdentifyDeviceData
 
 .clearATAIdentifyDeviceData:
 	mov di,ATA_IDENTIFY_DEVICE_DATA
@@ -198,66 +245,17 @@ identifyDevice:
 
 	rep stosw				; fill the buffer with device data
 
-	mov bx,[bp - 6]
-	call processATAIdentifyDeviceData
-
 	mov al,1				; assume error
 
-.exit:
-	pop ds
-	pop di
-	pop si
-	pop dx
-
-	mov sp,bp
-	pop bp
-
-	ret
-
-
-; Returns the position within IDE_DEVICES_DATA, based on the given Device ID.
-; Input:
-;     BL - IDE Device ID
-; Output:
-;     AX - position within IDE_DEVICES_DATA
-; Affects:
-;     BH
-; Preserves:
-;     DX
-; ---------------------------------------------------------------------------
-calculataIDEDevicesDataOffset:
-	push dx
-
-	xor ah,ah
-	mov ax,IDE_DEVICES_DATA_SIZE
-	xor bh,bh
-	mul bx
-	add ax,IDE_DEVICES_DATA
-
-	pop dx
-
-	ret
-
-; Fills the IDE_DEVICES_DATA memory matrix with ATA Identify Device data.
-; Input:
-;     BX - IDE Device ID
-; Output:
-;     IDE_DEVICE_DATA - is filled
-; Affects:
-;     AH, BX, CX, SI, DI
-; Preserves:
-;     DX, DS
-; ---------------------------------------------------------------------------
-processATAIdentifyDeviceData:
-	; TODO : is DS required?
-	push ds
-	push cs
+.processATAIdentifyDeviceData:
 	pop ds					; DS:SI = CS:SI
 
-	xchg bh,bl				; IDE Device ID needs to be in bl
-	call calculataIDEDevicesDataOffset
+	; TODO : Reconsider having a result value. It might be useless...
 
-	push ax					; save IDE_DEVICES_DATA offset
+	push ax					; save routine return value
+
+	mov bl,[bp - 5]				; IDE Device ID
+	call calculateIDEDevicesDataOffset
 
 	mov si,ATA_IDENTIFY_DEVICE_DATA
 	mov di,ax
@@ -288,57 +286,32 @@ processATAIdentifyDeviceData:
 	mov ax,[si + ATA_IDENTIFY_DEVICE_FEATURES_OFFSET]
 	mov byte [di + IDE_DEVICES_DATA_FEATURES_OFFSET],ah
 
-	; TODO : Extract constants separately.
-
-	pop ax					; restore IDE_DEVICES_DATA offset
-
 .fillSerial:
-	add si,20
-
-	mov di,ax
+	add si,ATA_IDENTIFY_DEVICE_SERIAL_OFFSET
 	add di,IDE_DEVICES_DATA_SERIAL_OFFSET
 
-	mov cx,10				; read 20 characters (10 words)
+	mov cx,IDE_DEVICES_DATA_SERIAL_LENGTH	; read 20 characters (10 words)
 	call copyWordsExchangeBytes
 
 .fillRevision:
-	add si,6
+	add si,ATA_IDENTIFY_DEVICE_REVISION_OFFSET - ATA_IDENTIFY_DEVICE_SERIAL_OFFSET - 2 * IDE_DEVICES_DATA_SERIAL_LENGTH
 
-	mov cx,4				; read 8 characters (4 words)
+	mov cx,IDE_DEVICES_DATA_REVISION_LENGTH	; read 8 characters (4 words)
 	call copyWordsExchangeBytes
 
 .fillModel:
-	mov cx,10				; read 40 characters (20 words)
+	mov cx,IDE_DEVICES_DATA_MODEL_LENGTH	; read 40 characters (20 words)
 	call copyWordsExchangeBytes
 
-	pop ds
+	pop ax
 
-	ret
+	pop di
+	pop si
+	pop dx
+	pop cx
 
-; Copies a number of words from SI to DI. Exchanges high and low bytes.
-; Input:
-;     SI - source strig
-;     DI - destination string
-;     CX - number of words
-; Output:
-;     none
-; Affects:
-;     FLAGS, AX, SI, DI
-; Preserves:
-;     none
-; ---------------------------------------------------------------------------
-copyWordsExchangeBytes:
-	cld
-
-.nextByte:
-	lodsw
-	xchg ah,al
-	stosw
-
-	loop .nextByte
-
-	xor ax,ax				; null-terminated string
-	stosw
+	mov sp,bp
+	pop bp
 
 	ret
 

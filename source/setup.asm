@@ -166,7 +166,7 @@ drawSetupTUI:
 	call directWriteAt
 
 .drawMainMenu:
-	mov dh,MAIN_MENU_EDIT_PARAMETERS
+	mov dh,MAIN_MENU_DEFINE_PARAMETERS
 	mov dl,MAIN_MENU_REGION_OFFSET + 1
 	mov si,sMainMenuDefineParameters
 	call directWriteAt
@@ -206,20 +206,21 @@ drawSetupTUI:
 ; Output:
 ;     none
 ; Affects:
-;     FLAGS, AX, SI, DI
+;     FLAGS, AX, DI
 ; Preserves:
-;     BX, CX, DX
+;     BX, CX, DX, SI
 ; ---------------------------------------------------------------------------
-drawParameters:
+drawIDEDeviceParameters:
 	push bp
 	mov bp,sp
 
 	push bx
 	push cx
 	push dx
+	push si
 
 	mov bl,[si + IDE_INTERFACE_DEVICE + 1]	; get device ID
-	call calculataIDEDevicesDataOffset
+	call calculateIDEDevicesDataOffset
 
 	mov di,ax
 
@@ -294,6 +295,7 @@ drawParameters:
 	mov si,sIDEDeviceModeCHS
 	call directWriteAt
 
+	pop si
 	pop dx
 	pop cx
 	pop bx
@@ -303,22 +305,51 @@ drawParameters:
 
 	ret
 
+; Writes all parameters of all IDE Devices. In addition, computes Device Size.
+; Input:
+;     none
+; Output:
+;     none
+; Affects:
+;     CX, DH, SI
+; Preserves:
+;     none
+; ---------------------------------------------------------------------------
+drawIDEDevicesParameters:
+	mov dh,IDE_DEVICES_REGION_PRIMARY_MASTER
+	mov si,IDE_INTERFACES_DEVICE_0
+
+	mov cx,IDE_DEVICES_DATA_DEVICES_COUNT
+.drawParameters:
+	call drawIDEDeviceParameters
+
+	inc dh					; next row
+	add si,IDE_INTERFACES_SIZE		; next IDE_INTERFACES_DEVICE_X memory array
+
+	loop .drawParameters
+
+	ret
+
 ; Highlights the entire Parameters region during IDE Device detection.
 ; Input:
 ;     none
 ; Output:
 ;     none
 ; Affects:
-;     FLAGS, AH, CX, DL
+;     FLAGS, AH, DL
 ; Preserves:
-;     none
+;     CX
 ; ---------------------------------------------------------------------------
 highlightDetection:
+	push cx
+
 	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
 	xor ch,ch
 	mov cl,IDE_DEVICE_REGION_WIDTH
 	mov dl,IDE_DEVICE_REGION_TYPE_OFFSET
 	call highlightRegion
+
+	pop cx
 
 	ret
 
@@ -328,48 +359,30 @@ highlightDetection:
 ; Output:
 ;     none
 ; Affects:
-;     AX, SI
+;     SI
 ; Preserves:
 ;     BX, CX, DX
 ; ---------------------------------------------------------------------------
 detectIDEDevicesParameters:
-	; TODO : Are all these registers necessary?
-
 	push bx
 	push cx
 	push dx
 
 	mov dh,IDE_DEVICES_REGION_PRIMARY_MASTER
+	mov si,IDE_INTERFACES_DEVICE_0		; starting with Primary Interface, Device 0 (Master)
+
+	mov cx,IDE_DEVICES_DATA_DEVICES_COUNT
+.drawParameters:
 	call highlightDetection
 
-	mov si,IDE_INTERFACES_DEVICE_0	
 	call identifyDevice
 
-	call drawParameters
+	call drawIDEDeviceParameters
 
-	mov dh,IDE_DEVICES_REGION_PRIMARY_SLAVE
-	call highlightDetection
+	inc dh					; next row
+	add si,IDE_INTERFACES_SIZE		; next IDE_INTERFACES_DEVICE_X memory array
 
-	mov si,IDE_INTERFACES_DEVICE_1
-	call identifyDevice
-
-	call drawParameters
-
-	mov dh,IDE_DEVICES_REGION_SECONDARY_MASTER
-	call highlightDetection
-
-	mov si,IDE_INTERFACES_DEVICE_2
-	call identifyDevice
-
-	call drawParameters
-
-	mov dh,IDE_DEVICES_REGION_SECONDARY_SLAVE
-	call highlightDetection
-
-	mov si,IDE_INTERFACES_DEVICE_3
-	call identifyDevice
-
-	call drawParameters
+	loop .drawParameters
 
 	pop dx
 	pop cx
@@ -385,18 +398,16 @@ detectIDEDevicesParameters:
 ; Affects:
 ;     none
 ; Preserves:
-;     AX, CX, DX
+;     AX, CX
 ; ---------------------------------------------------------------------------
 clearIDEDeviceParameterRegion:
 	push ax
 	push cx
-	push dx
 
 	mov cx,IDE_DEVICE_REGION_EDIT_DIGIT_COUNT
 	mov al,20h				; empty space
 	call directWriteChar
 
-	pop dx
 	pop cx
 	pop ax
 
@@ -428,7 +439,7 @@ editIDEDeviceParameter:
 
 	sub bh,IDE_DEVICES_REGION_TOP		; infer IDE Device index from bh (row = ID)
 	xchg bh,bl				; switch IDE Device index to bl
-	call calculataIDEDevicesDataOffset
+	call calculateIDEDevicesDataOffset
 
 	mov si,ax				; IDE_DEVICES_DATA offset
 
@@ -468,7 +479,7 @@ editIDEDeviceParameter:
 .readDigit:
 	cmp bl,IDE_DEVICE_REGION_EDIT_DIGIT_COUNT - 1
 	ja .editParameterLoop
-	inc bl
+	inc bl					; next digit
 
 	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
 
@@ -507,7 +518,7 @@ editIDEDeviceParameter:
 .backOnePosition:
 	or bl,bl
 	jz .editParameterLoop
-	dec bl
+	dec bl					; previous digit
 
 	dec dl					; column
 
@@ -530,6 +541,17 @@ editIDEDeviceParameter:
 
 	jmp .editParameterLoop
 
+.exitSave:
+	or bl,bl				; no digit entered?
+	jz .exitNoSave
+
+	mov ax,[bp - 2]				; input value
+	mov [si],ax
+
+	; TODO : Trigger recalculation of Device size.
+
+	jmp .exit
+
 .exitNoSave:
 	mov ax,[si]				; original IDE Device Parameter value
 	mov dx,[bp - 8]				; original row,column
@@ -538,16 +560,6 @@ editIDEDeviceParameter:
 	call clearIDEDeviceParameterRegion
 
 	call directWriteInteger
-
-	jmp .exit
-
-.exitSave:
-	; TODO : Bug when pressing ENTER without actually typing anything; clears the number.
-
-	mov ax,[bp - 2]				; input value
-	mov [si],ax
-
-	; TODO : Extract the size calculation routine. And call it here.
 
 .exit:
 	pop si
@@ -570,8 +582,7 @@ editIDEDeviceParameter:
 ; Preserves:
 ;     AX, BX, CX, DX, SI, DI
 ; ---------------------------------------------------------------------------
-editIDEDevicesParameters:
-	push ax
+defineIDEDevicesParameters:
 	push bx
 	push cx
 	push dx
@@ -730,7 +741,6 @@ editIDEDevicesParameters:
 	pop dx
 	pop cx
 	pop bx
-	pop ax
 
 	ret
 
@@ -822,7 +832,7 @@ deviceInformation:
 	call clearDeviceInformation
 
 	sub bl,IDE_DEVICES_REGION_TOP		; infer IDE Device index from bl (row = ID)
-	call calculataIDEDevicesDataOffset
+	call calculateIDEDevicesDataOffset
 
 	mov bx,ax				; IDE_DEVICES_DATA offset
 	
@@ -1068,7 +1078,7 @@ viewIDEDevicesInformation:
 	mov ah,BIOS_TEXT_COLOR			; destroy any possible selection
 	call highlightRegion
 
-	mov cl,23				; starting column
+	mov cl,IDE_DEVICE_INFO_KEY_OFFSET - 1	; starting column
 	call clearDeviceInformation
 
 	pop dx
@@ -1106,9 +1116,9 @@ enterSetup:
 
 	call drawSetupTUI
 
-	; TODO : This will most probably be replaced with a call to read the EEPROM stored parameters.
+	call readEEPROMData
 
-	call readCMOSData
+	call drawIDEDevicesParameters
 
 .partialRedraw:
 	mov dh,SETUP_USAGE_TOP
@@ -1148,8 +1158,8 @@ enterSetup:
 	jmp .mainMenuLoop
 
 .executeAction:
-	cmp bl,MAIN_MENU_EDIT_PARAMETERS
-	je .mainMenuEditParameters
+	cmp bl,MAIN_MENU_DEFINE_PARAMETERS
+	je .mainMenuDefineParameters
 	cmp bl,MAIN_MENU_AUTODETECT_ALL
 	je .mainMenuAutodetectAll
 	cmp bl,MAIN_MENU_DEVICE_INFORMATION
@@ -1193,8 +1203,8 @@ enterSetup:
 
 	jmp .mainMenuLoop
 
-.mainMenuEditParameters:
-	call editIDEDevicesParameters
+.mainMenuDefineParameters:
+	call defineIDEDevicesParameters
 
 	jmp .mainMenuLoop
 
