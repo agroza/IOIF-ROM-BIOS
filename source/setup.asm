@@ -199,7 +199,41 @@ drawSetupTUI:
 
 	ret
 
-; Writes a line of IDE Device parameters and computes Device Size.
+; Calculates and displays IDE Device Size.
+; Input:
+;     BH - color attribute
+;     DI - pointer to IDE_DEVICES_DATA
+; Output:
+;     AX - IDE Device size in Mb
+; Affects:
+;     FLAGS, SI
+; Preserves:
+;     BX, DX
+; ---------------------------------------------------------------------------
+calculateDisplayIDEDeviceSize:
+	push bx					; save color attribute
+	push dx					; save row,column
+
+	; TODO : Prevent faulty divisions.
+
+	mov ax,[di + IDE_DEVICES_DATA_CYLINDERS_OFFSET]
+	mov bx,[di + IDE_DEVICES_DATA_HEADS_OFFSET]
+	mul bx
+	mov bx,[di + IDE_DEVICES_DATA_SECTORS_OFFSET]
+	mul bx
+	mov bx,1024				; in Mb
+	div bx
+	shr ax,1				; divide by 2 (assume 512 bps)
+
+	pop dx					; restore row,column
+	pop bx					; restore color attribute
+
+	mov dl,IDE_DEVICE_REGION_SIZE_OFFSET
+	call directWriteInteger
+
+	ret
+
+; Writes a line of IDE Device parameters.
 ; Input:
 ;     DH - row
 ;     SI - pointer to IDE_INTERFACE_DEVICE_X structure, where X = 0, 1, 2, 3
@@ -222,7 +256,7 @@ drawIDEDeviceParameters:
 	mov bl,[si + IDE_INTERFACE_DEVICE + 1]	; get device ID
 	call calculateIDEDevicesDataOffset
 
-	mov di,ax
+	mov di,ax				; IDE_DEVICES_DATA offset
 
 	mov ah,BIOS_TEXT_COLOR
 
@@ -272,23 +306,7 @@ drawIDEDeviceParameters:
 	mov dl,IDE_DEVICE_REGION_LDZONE_OFFSET
 	call directWriteInteger
 
-	push bx					; save color attribute
-	push dx					; save row,column
-
-	mov ax,[di + IDE_DEVICES_DATA_CYLINDERS_OFFSET]
-	mov bx,[di + IDE_DEVICES_DATA_HEADS_OFFSET]
-	mul bx
-	mov bx,[di + IDE_DEVICES_DATA_SECTORS_OFFSET]
-	mul bx
-	mov bx,1024				; in Mb
-	div bx
-	shr ax,1				; divide by 2 (assume 512 bps)
-
-	pop dx					; restore row,column
-	pop bx					; restore color attribute
-
-	mov dl,IDE_DEVICE_REGION_SIZE_OFFSET
-	call directWriteInteger
+	call calculateDisplayIDEDeviceSize
 
 	mov dl,IDE_DEVICE_REGION_MODE_OFFSET
 	mov ah,BIOS_TEXT_COLOR
@@ -305,7 +323,7 @@ drawIDEDeviceParameters:
 
 	ret
 
-; Writes all parameters of all IDE Devices. In addition, computes Device Size.
+; Writes all parameters of all IDE Devices.
 ; Input:
 ;     none
 ; Output:
@@ -417,6 +435,8 @@ clearIDEDeviceParameterRegion:
 ; Input:
 ;     BH - Y position within IDE_DEVICES_REGION structure (TOP, TOP + 1, TOP + 2, TOP + 3)
 ;     BL - region parameter ID
+;     DH - row
+;     DL - column
 ; Output:
 ;     none
 ; Affects:
@@ -442,6 +462,8 @@ editIDEDeviceParameter:
 	call calculateIDEDevicesDataOffset
 
 	mov si,ax				; IDE_DEVICES_DATA offset
+
+	push si					; later on will be popped as di
 
 	mov bx,[bp - 4]				; stored bx
 	xor bh,bh				; ignore high byte
@@ -548,20 +570,24 @@ editIDEDeviceParameter:
 	mov ax,[bp - 2]				; input value
 	mov [si],ax
 
-	; TODO : Trigger recalculation of Device size.
+	sub dl,bl				; set to input start column
 
 	jmp .exit
 
 .exitNoSave:
 	mov ax,[si]				; original IDE Device Parameter value
 	mov dx,[bp - 8]				; original row,column
-	inc dl					; column
+	inc dl					; set to input start column
 
+.exit:
 	call clearIDEDeviceParameterRegion
 
 	call directWriteInteger
 
-.exit:
+	pop di					; original si pointer
+	mov bh,BIOS_TEXT_COLOR
+	call calculateDisplayIDEDeviceSize
+
 	pop si
 	pop dx
 	pop cx
@@ -645,10 +671,12 @@ defineIDEDevicesParameters:
 	jmp .editParametersLoop
 
 .executePageUp:
+	; TODO : Implement Page Up functionality.
 
 	jmp .editParametersLoop
 
 .executePageDown:
+	; TODO : Implement Page Down functionality.
 
 	jmp .editParametersLoop
 
