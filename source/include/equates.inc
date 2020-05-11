@@ -14,7 +14,17 @@ ROMSTART					EQU	0000h
 ROMSIZE						EQU	2000h
 ROMBLOCKS					EQU	ROMSIZE / 512
 
-; Keyboard Constants
+; Messages (Strings) Constants
+; ---------------------------------------------------------------------------
+MSG_IDE_DEVICE_LENGTH				EQU	20
+
+; System: Video BIOS Constants
+; ---------------------------------------------------------------------------
+VIDEO_RAM_SEGMENT				EQU	0B800h
+VIDEO_COLUMN_COUNT				EQU	79
+VIDEO_ROW_COUNT					EQU	24
+
+; System: Keyboard Constants
 ; ---------------------------------------------------------------------------
 KEYBOARD_UP					EQU	4800h
 KEYBOARD_DOWN					EQU	5000h
@@ -31,7 +41,7 @@ KEYBOARD_9					EQU	'9'
 KEYBOARD_N					EQU	'N'
 KEYBOARD_Y					EQU	'Y'
 
-; Color Constants
+; Text-Mode User Interface: Color Constants
 ; ---------------------------------------------------------------------------
 COLOR_BLACK					EQU	00h
 COLOR_BLUE					EQU	01h
@@ -52,6 +62,8 @@ COLOR_WHITE					EQU	0Fh
 
 ATTRIBUTE_BLINK					EQU	1 << 7
 
+; Text-Mode User Interface: Pre-defined Color Constants
+; ---------------------------------------------------------------------------
 NORMAL_TEXT_COLOR				EQU	(COLOR_BLACK << 4) + COLOR_LIGHTGRAY
 HIGHLIGHT_TEXT_COLOR				EQU	(COLOR_BLACK << 4) + COLOR_WHITE
 
@@ -64,13 +76,21 @@ IDE_FEATURE_ABSENT				EQU	(COLOR_BLUE << 4) + COLOR_LIGHTRED
 IDE_FEATURE_PRESENT				EQU	(COLOR_BLUE << 4) + COLOR_LIGHTGREEN
 IDE_FEATURE_POSSIBLE				EQU	(COLOR_BLUE << 4) + COLOR_LIGHTYELLOW
 
-; Video Constants
+; Text-Mode User Interface: IDE Devices Regions Constants
 ; ---------------------------------------------------------------------------
-VIDEO_RAM_SEGMENT				EQU	0B800h
-VIDEO_COLUMN_COUNT				EQU	79
-VIDEO_ROW_COUNT					EQU	24
+IDE_DEVICES_REGION_OFFSET			EQU	2
+IDE_DEVICES_REGION_LENGTH			EQU	78
 
-; Text Offsets and Lengths in the Text-Mode User Interface
+IDE_DEVICES_REGION_TOP				EQU	6
+
+IDE_DEVICES_REGION_PRIMARY_MASTER		EQU	IDE_DEVICES_REGION_TOP
+IDE_DEVICES_REGION_PRIMARY_SLAVE		EQU	IDE_DEVICES_REGION_PRIMARY_MASTER + 1
+IDE_DEVICES_REGION_SECONDARY_MASTER		EQU	IDE_DEVICES_REGION_PRIMARY_SLAVE + 1
+IDE_DEVICES_REGION_SECONDARY_SLAVE		EQU	IDE_DEVICES_REGION_SECONDARY_MASTER + 1
+
+IDE_DEVICES_REGION_BOTTOM			EQU	IDE_DEVICES_REGION_SECONDARY_SLAVE
+
+; Text-Mode User Interface: IDE Device Region Constants
 ; ---------------------------------------------------------------------------
 IDE_DEVICE_REGION_WIDTH				EQU	53
 
@@ -95,18 +115,8 @@ IDE_DEVICE_REGION_MODE_LENGTH			EQU	6
 
 IDE_DEVICE_REGION_EDIT_DIGIT_COUNT		EQU	5
 
-IDE_DEVICES_REGION_OFFSET			EQU	2
-IDE_DEVICES_REGION_LENGTH			EQU	78
-
-IDE_DEVICES_REGION_TOP				EQU	6
-
-IDE_DEVICES_REGION_PRIMARY_MASTER		EQU	IDE_DEVICES_REGION_TOP
-IDE_DEVICES_REGION_PRIMARY_SLAVE		EQU	IDE_DEVICES_REGION_PRIMARY_MASTER + 1
-IDE_DEVICES_REGION_SECONDARY_MASTER		EQU	IDE_DEVICES_REGION_PRIMARY_SLAVE + 1
-IDE_DEVICES_REGION_SECONDARY_SLAVE		EQU	IDE_DEVICES_REGION_SECONDARY_MASTER + 1
-
-IDE_DEVICES_REGION_BOTTOM			EQU	IDE_DEVICES_REGION_SECONDARY_SLAVE
-
+; Text-Mode User Interface: Main Menu Regions Constants
+; ---------------------------------------------------------------------------
 MAIN_MENU_REGION_OFFSET				EQU	2
 MAIN_MENU_REGION_LENGTH				EQU	20
 
@@ -120,6 +130,8 @@ MAIN_MENU_SAVE_AND_EXIT				EQU	MAIN_MENU_EXIT + 1
 
 MAIN_MENU_REGION_BOTTOM				EQU	MAIN_MENU_SAVE_AND_EXIT
 
+; Text-Mode User Interface: IDE Device Information Constants
+; ---------------------------------------------------------------------------
 IDE_DEVICE_INFO_TOP				EQU	11
 
 IDE_DEVICE_INFO_KEY_OFFSET			EQU	25
@@ -141,28 +153,12 @@ IDE_DEVICE_FEATURE_IORDY_LENGTH			EQU	6
 IDE_DEVICE_FEATURE_IORDY_DISABLE_OFFSET		EQU	7
 IDE_DEVICE_FEATURE_IORDY_DISABLE_LENGTH		EQU	11
 
+; Text-Mode User Interface: Other Text Offsets and General Constants
+; ---------------------------------------------------------------------------
 SETUP_USAGE_TOP					EQU	23
 SETUP_USAGE_OFFSET				EQU	16
 
-; IDE Master/Slave Identifiers
-; ---------------------------------------------------------------------------
-IDE_MASTER_DEVICE				EQU	00h
-IDE_SLAVE_DEVICE				EQU	10h
-
-; IDE Interface Base Addresses
-; ---------------------------------------------------------------------------
-PRIMARY_IDE_INTERFACE				EQU	01F0h	; 0x1F0h - 0x1F7h
-PRIMARY_IDE_INTERFACE_CONTROL			EQU	03F0h	; 0x3F6h - 0x3F7h
-SECONDARY_IDE_INTERFACE				EQU	0170h	; 0x170h - 0x177h
-SECONDARY_IDE_INTERFACE_CONTROL			EQU	0370h	; 0x376h - 0x377h
-
-IDE_INTERFACES_SIZE				EQU	6	; bytes
-
-IDE_INTERFACE_BASE_ADDRESS			EQU	0	; word
-IDE_INTERFACE_CONTROL_ADDRESS			EQU	2	; word
-IDE_INTERFACE_DEVICE				EQU	4	; word (Master/Slave|ID)
-
-; IDE Interface Registers
+; ATA Standard: IDE Interface Registers
 ; ---------------------------------------------------------------------------
 DATA_REGISTER					EQU	00h	; read/write
 ERROR_REGISTER					EQU	01h	; read-only
@@ -179,7 +175,8 @@ ALTERNATE_STATUS_REGISTER			EQU	06h	; read-only
 DEVICE_CONTROL_REGISTER				EQU	06h	; write-only
 DEVICE_ADDRESS_REGISTER				EQU	07h	; not used
 
-; IDE Error Register Flags
+; ATA Standard: IDE Error Register Flags
+; ---------------------------------------------------------------------------
 ERROR_REGISTER_BBK				EQU	1 << 7	; bad block detected
 ERROR_REGISTER_UNC				EQU	1 << 6	; uncorrectable data error
 ERROR_REGISTER_MC				EQU	1 << 5	; media changed
@@ -189,7 +186,7 @@ ERROR_REGISTER_ABRT				EQU	1 << 2	; command aborted
 ERROR_REGISTER_TK0NF				EQU	1 << 1	; track 0 not found
 ERROR_REGISTER_AMNF				EQU	1 << 0	; address mark not found
 
-; IDE Status Register Flags
+; ATA Standard: IDE Status Register Flags
 ; ---------------------------------------------------------------------------
 STATUS_REGISTER_BSY				EQU	1 << 7	; busy
 STATUS_REGISTER_DRDY				EQU	1 << 6	; device ready
@@ -200,11 +197,11 @@ STATUS_REGISTER_CORR				EQU	1 << 2	; corrected data
 STATUS_REGISTER_IDX				EQU	1 << 1	; index
 STATUS_REGISTER_ERR				EQU	1 << 0	; error
 
-; ATA Commands
+; ATA Standard: ATA Commands
 ; ---------------------------------------------------------------------------
 ATA_IDENTIFY_DEVICE_COMMAND			EQU	0ECh
 
-; ATA Identify Device Command Offsets
+; ATA Standard: ATA Identify Device Command Offsets
 ; ---------------------------------------------------------------------------
 ATA_IDENTIFY_DEVICE_GENERAL_OFFSET		EQU	0
 ATA_IDENTIFY_DEVICE_CYLINDERS_OFFSET		EQU	2
@@ -219,7 +216,7 @@ IDE_DEVICES_DATA_SERIAL_LENGTH			EQU	10	; words
 IDE_DEVICES_DATA_REVISION_LENGTH		EQU	4	; words
 IDE_DEVICES_DATA_MODEL_LENGTH			EQU	20	; words
 
-; ATA Identify Device Command Feature Flags
+; ATA Standard: ATA Identify Device Command Feature Flags
 ; ---------------------------------------------------------------------------
 ATA_ID_DEV_GENERAL_REMOVABLE_FLAG		EQU	1 << 7
 ATA_ID_DEV_GENERAL_FIXED_FLAG			EQU	1 << 6
@@ -230,7 +227,25 @@ ATA_ID_DEV_FEATURE_IORDY_DISABLE_FLAG		EQU	1 << 2
 ATA_ID_DEV_FEATURE_LBA_FLAG			EQU	1 << 1
 ATA_ID_DEV_FEATURE_DMA_FLAG			EQU	1 << 0
 
-; IDE Devices Data Matrix Equates and Offsets
+; I/OIF ROM BIOS: IDE Interface Base Addresses
+; ---------------------------------------------------------------------------
+PRIMARY_IDE_INTERFACE				EQU	01F0h	; 0x1F0h - 0x1F7h
+PRIMARY_IDE_INTERFACE_CONTROL			EQU	03F0h	; 0x3F6h - 0x3F7h
+SECONDARY_IDE_INTERFACE				EQU	0170h	; 0x170h - 0x177h
+SECONDARY_IDE_INTERFACE_CONTROL			EQU	0370h	; 0x376h - 0x377h
+
+IDE_INTERFACES_SIZE				EQU	6	; bytes
+
+IDE_INTERFACE_BASE_ADDRESS			EQU	0	; word
+IDE_INTERFACE_CONTROL_ADDRESS			EQU	2	; word
+IDE_INTERFACE_DEVICE				EQU	4	; word (Master/Slave|ID)
+
+; I/OIF ROM BIOS: IDE Master/Slave Identifiers
+; ---------------------------------------------------------------------------
+IDE_MASTER_DEVICE				EQU	00h
+IDE_SLAVE_DEVICE				EQU	10h
+
+; I/OIF ROM BIOS: IDE Devices Data Matrix Equates and Offsets
 ; ---------------------------------------------------------------------------
 IDE_DEVICES_DATA_SIZE				EQU	87	; bytes
 IDE_DEVICES_DATA_DEVICES_COUNT			EQU	4
@@ -252,7 +267,7 @@ IDE_DEVICES_DATA_GENERAL_HIGH_OFFSET		EQU	84
 IDE_DEVICES_DATA_GENERAL_LOW_OFFSET		EQU	85
 IDE_DEVICES_DATA_FEATURES_OFFSET		EQU	86
 
-; IDE Devices Parameters Constraints
+; I/OIF ROM BIOS: IDE Devices Parameters Restrictions
 ; ---------------------------------------------------------------------------
 IDE_PARAMETER_RESTRICTION_MIN_OFFSET		EQU	0
 IDE_PARAMETER_RESTRICTION_MAX_OFFSET		EQU	2
