@@ -165,7 +165,6 @@ drawSetupTUI:
 	mov si,sIDEDeviceSS
 	call directWriteAt
 
-.drawMainMenu:
 	mov dh,MAIN_MENU_DEFINE_PARAMETERS
 	mov dl,MAIN_MENU_REGION_OFFSET + 1
 	mov si,sMainMenuDefineParameters
@@ -207,7 +206,7 @@ drawSetupTUI:
 ; Output:
 ;     AX - IDE Device size in Mb
 ; Affects:
-;     FLAGS, BH, SI
+;     FLAGS, DL
 ; Preserves:
 ;     BX, DX
 ; ---------------------------------------------------------------------------
@@ -338,14 +337,14 @@ drawIDEDeviceParameters:
 ; ---------------------------------------------------------------------------
 drawIDEDevicesParameters:
 	mov dh,IDE_DEVICES_REGION_PRIMARY_MASTER
-	mov si,IDE_INTERFACES_DEVICE_0
+	mov si,IDE_INTERFACES_DEVICE_0		; first IDE Interface: Primary Master (Device 0)
 
 	mov cx,IDE_DEVICES_DATA_DEVICES_COUNT
 .drawParameters:
 	call drawIDEDeviceParameters
 
 	inc dh					; next row
-	add si,IDE_INTERFACES_SIZE		; next IDE_INTERFACES_DEVICE_X memory array
+	add si,IDE_INTERFACES_SIZE		; next IDE Interface
 
 	loop .drawParameters
 
@@ -390,18 +389,18 @@ detectIDEDevicesParameters:
 	push dx
 
 	mov dh,IDE_DEVICES_REGION_PRIMARY_MASTER
-	mov si,IDE_INTERFACES_DEVICE_0		; starting with Primary Interface, Device 0 (Master)
+	mov si,IDE_INTERFACES_DEVICE_0		; first IDE Interface: Primary Master (Device 0)
 
 	mov cx,IDE_DEVICES_DATA_DEVICES_COUNT
 .drawParameters:
 	call highlightDetection
 
-	call identifyDevice
+	call identifyIDEDevice
 
 	call drawIDEDeviceParameters
 
 	inc dh					; next row
-	add si,IDE_INTERFACES_SIZE		; next IDE_INTERFACES_DEVICE_X memory array
+	add si,IDE_INTERFACES_SIZE		; next IDE Interface
 
 	loop .drawParameters
 

@@ -107,41 +107,17 @@ start:
 	call enterSetup
 
 .autodetectIDEDevices:
-	mov ah,NORMAL_TEXT_COLOR
-	mov si,sDetectingIDE
-	call directWrite
-	mov si,sIDEDevicePM
-	call directWrite
+	mov bx,sIDEDevicePM			; first IDE Device string: Primary Master string
+	mov si,IDE_INTERFACES_DEVICE_0		; first IDE Interface: Primary Master (Device 0)
 
-	mov si,IDE_INTERFACES_DEVICE_0
-	call autodetectDevice
+	mov cx,IDE_DEVICES_DATA_DEVICES_COUNT
+.nextIDEDevice:
+	call autodetectIDEDevice
 
-	mov ah,NORMAL_TEXT_COLOR
-	mov si,sDetectingIDE
-	call directWrite
-	mov si,sIDEDevicePS
-	call directWrite
+	add bx,MSG_IDE_DEVICE_LENGTH		; next IDE Device string
+	add si,IDE_INTERFACES_SIZE		; next IDE Interface
 
-	mov si,IDE_INTERFACES_DEVICE_1
-	call autodetectDevice
-
-	mov ah,NORMAL_TEXT_COLOR
-	mov si,sDetectingIDE
-	call directWrite
-	mov si,sIDEDeviceSM
-	call directWrite
-
-	mov si,IDE_INTERFACES_DEVICE_2
-	call autodetectDevice
-
-	mov ah,NORMAL_TEXT_COLOR
-	mov si,sDetectingIDE
-	call directWrite
-	mov si,sIDEDeviceSS
-	call directWrite
-
-	mov si,IDE_INTERFACES_DEVICE_3
-	call autodetectDevice
+	loop .nextIDEDevice
 
 .exit:
 	call CRLF

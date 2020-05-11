@@ -128,7 +128,7 @@ copyWordsExchangeBytes:
 ; Preserves:
 ;     DX, SI, DI, DS
 ; ---------------------------------------------------------------------------
-identifyDevice:
+identifyIDEDevice:
 	push bp
 	mov bp,sp
 
@@ -317,32 +317,50 @@ identifyDevice:
 
 ; Autodetection of an IDE device.
 ; Input:
+;     BX - pointer to string; current IDE Device (Primary/Secondary; Master/Slave)
 ;     SI - pointer to IDE_INTERFACE_DEVICE_X structure, where X = 0, 1, 2, 3
 ; Output:
 ;     none
 ; Affects:
-;     FLAGS, AX, SI
+;     FLAGS, AX
 ; Preserves:
-;     none
+;     BX, CX, SI
 ; ---------------------------------------------------------------------------
-autodetectDevice:
-	call identifyDevice
+autodetectIDEDevice:
+	push bx
+	push cx
+	push si
 
+	push si					; save pointer to IDE_INTERFACE_DEVICE_X
+
+	mov ah,NORMAL_TEXT_COLOR
+	mov si,sDetectingIDE
+	call directWrite
+	mov si,bx				; which IDE Device string (Primary/Secondary; Master/Slave)
+	call directWrite
+
+	pop si					; restore pointer to IDE_INTERFACE_DEVICE_X
+
+	call identifyIDEDevice
+
+	mov ah,HIGHLIGHT_TEXT_COLOR
 	or al,al
 	jnz .detectNone
 
-	mov ah,HIGHLIGHT_TEXT_COLOR
 	mov si,IDE_DEVICES_DATA + IDE_DEVICES_DATA_MODEL_OFFSET
-	call directWrite
 
 	jmp .exit
 
 .detectNone:
-	mov ah,HIGHLIGHT_TEXT_COLOR
 	mov si,sIDEDeviceTypeNone
-	call directWrite
 
 .exit:
+	call directWrite
+
 	call CRLF
+
+	pop si
+	pop cx
+	pop bx
 
 	ret
