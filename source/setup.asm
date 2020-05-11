@@ -202,33 +202,36 @@ drawSetupTUI:
 ; Calculates and displays IDE Device Size.
 ; Input:
 ;     BH - color attribute
+;     DH - row
 ;     DI - pointer to IDE_DEVICES_DATA
 ; Output:
 ;     AX - IDE Device size in Mb
 ; Affects:
-;     FLAGS, SI
+;     FLAGS, BH, SI
 ; Preserves:
 ;     BX, DX
 ; ---------------------------------------------------------------------------
 calculateDisplayIDEDeviceSize:
+	mov dl,IDE_DEVICE_REGION_SIZE_OFFSET
+
+	mov ah,bh
+	call clearIDEDeviceParameterRegion
+
 	push bx					; save color attribute
 	push dx					; save row,column
 
-	; TODO : Prevent faulty divisions.
-
-	mov ax,[di + IDE_DEVICES_DATA_CYLINDERS_OFFSET]
-	mov bx,[di + IDE_DEVICES_DATA_HEADS_OFFSET]
-	mul bx
+	mov ax,[di + IDE_DEVICES_DATA_HEADS_OFFSET]
 	mov bx,[di + IDE_DEVICES_DATA_SECTORS_OFFSET]
+	mul bx
+	shr ax,1				; divide (H * S ) by 2 (assume 512 bps)
+	mov bx,[di + IDE_DEVICES_DATA_CYLINDERS_OFFSET]
 	mul bx
 	mov bx,1024				; in Mb
 	div bx
-	shr ax,1				; divide by 2 (assume 512 bps)
 
 	pop dx					; restore row,column
 	pop bx					; restore color attribute
 
-	mov dl,IDE_DEVICE_REGION_SIZE_OFFSET
 	call directWriteInteger
 
 	ret
@@ -410,7 +413,9 @@ detectIDEDevicesParameters:
 
 ; Clears the selected Parameter video region.
 ; Input:
-;     none
+;     AH - color attribute
+;     DH - row
+;     DL - column
 ; Output:
 ;     none
 ; Affects:
@@ -440,9 +445,9 @@ clearIDEDeviceParameterRegion:
 ; Output:
 ;     none
 ; Affects:
-;     FLAGS
+;     FLAGS, DI
 ; Preserves:
-;     AX, BX, CX, DX, SI
+;     BX, CX, DX, SI
 ; ---------------------------------------------------------------------------
 editIDEDeviceParameter:
 	push bp
@@ -567,7 +572,32 @@ editIDEDeviceParameter:
 	or bl,bl				; no digit entered?
 	jz .exitNoSave
 
+	mov di,IDE_PARAMETERS_CHS
+
+	xor ah,ah
+	mov al,[bp - 4]				; region parameter ID from stored bl
+	sub al,1				; skip TYPE, bl now holds editable parameter index
+	shl al,2				; multiply by 4 (word size * restrictions_count)
+
+	add di,ax				; di now points to the correct restriction position
+
 	mov ax,[bp - 2]				; input value
+	cmp ax,[di + IDE_PARAMETER_RESTRICTION_MIN_OFFSET]
+	jb .setMinimumRestriction
+	cmp ax,[di + IDE_PARAMETER_RESTRICTION_MAX_OFFSET]
+	ja .setMaximumRestriction
+
+	jmp .updateValue
+
+.setMinimumRestriction:
+	mov ax,[di + IDE_PARAMETER_RESTRICTION_MIN_OFFSET]
+
+	jmp .updateValue
+
+.setMaximumRestriction:
+	mov ax,[di + IDE_PARAMETER_RESTRICTION_MAX_OFFSET]
+
+.updateValue:
 	mov [si],ax
 
 	sub dl,bl				; set to input start column
@@ -577,6 +607,7 @@ editIDEDeviceParameter:
 .exitNoSave:
 	mov ax,[si]				; original IDE Device Parameter value
 	mov dx,[bp - 8]				; original row,column
+
 	inc dl					; set to input start column
 
 .exit:
@@ -584,8 +615,9 @@ editIDEDeviceParameter:
 
 	call directWriteInteger
 
-	pop di					; original si pointer
-	mov bh,BIOS_TEXT_COLOR
+	pop di					; di points to original si
+
+	mov bh,BIOS_TEXT_COLOR			; color attribute
 	call calculateDisplayIDEDeviceSize
 
 	pop si
@@ -1278,7 +1310,7 @@ enterSetup:
 	jmp .exitMenuLoop
 
 .saveAndExitSetup:
-	; TODO : Call EEPROM save routine.
+	call writeEEPROMData
 
 .exit:
 	xor dx,dx				; row,column = 0,0

@@ -277,7 +277,7 @@ identifyDevice:
 	jmp .copyTypeAndFeatures
 
 .copyWPCOMP:
-	mov word [di + IDE_DEVICES_DATA_WPCOMP_OFFSET],WPCOMP_VALUE
+	mov word [di + IDE_DEVICES_DATA_WPCOMP_OFFSET],IDE_PARAMETER_CHS_WPCOMP_MAX
 
 .copyTypeAndFeatures:
 	mov ax,[si + ATA_IDENTIFY_DEVICE_GENERAL_OFFSET]
