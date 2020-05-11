@@ -18,6 +18,25 @@ section .text
 		DB	IDE_DEVICE_REGION_LDZONE_OFFSET - 1, IDE_DEVICE_REGION_LDZONE_LENGTH
 		DB	IDE_DEVICE_REGION_MODE_OFFSET - 2, IDE_DEVICE_REGION_MODE_LENGTH
 
+	IDE_PARAMETERS_CHS:
+		DW	IDE_PARAMETER_CHS_CYLINDERS_MIN, IDE_PARAMETER_CHS_CYLINDERS_MAX
+		DW	IDE_PARAMETER_CHS_HEADS_MIN, IDE_PARAMETER_CHS_HEADS_MAX
+		DW	IDE_PARAMETER_CHS_SECTORS_MIN, IDE_PARAMETER_CHS_SECTORS_MAX
+		DW	IDE_PARAMETER_CHS_WPCOMP_MIN, IDE_PARAMETER_CHS_WPCOMP_MAX
+		DW	IDE_PARAMETER_CHS_LDZONE_MIN, IDE_PARAMETER_CHS_LDZONE_MAX
+
+	; IDE_PARAMETERS_CHS is a memory array, being structured as:
+	;     Offset:  0 :  1 word  - IDE CHS Addressing Cylinders Minimum Value
+	;     Offset:  2 :  1 word  - IDE CHS Addressing Cylinders Maximum Value
+	;     Offset:  4 :  1 word  - IDE CHS Addressing Heads Minimum Value
+	;     Offset:  6 :  1 word  - IDE CHS Addressing Heads Maximum Value
+	;     Offset:  8 :  1 word  - IDE CHS Addressing Sectors Minimum Value
+	;     Offset: 10 :  1 word  - IDE CHS Addressing Sectors Maximum Value
+	;     Offset: 12 :  1 word  - IDE CHS Addressing Write Precompensation Minimum Value
+	;     Offset: 14 :  1 word  - IDE CHS Addressing Write Precompensation Maximum Value
+	;     Offset: 16 :  1 word  - IDE CHS Addressing Landing Zone Minimum Value
+	;     Offset: 18 :  1 word  - IDE CHS Addressing Landing Zone Maximum Value
+
 	IDE_INTERFACES_DEVICE_0:
 		DW	PRIMARY_IDE_INTERFACE, PRIMARY_IDE_INTERFACE_CONTROL
 		DB	IDE_MASTER_DEVICE, IDE_DEVICES_PRIMARY_MASTER_ID
