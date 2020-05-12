@@ -73,7 +73,7 @@ clearIDEDevicesData:
 ; Output:
 ;     AX - position within IDE_DEVICES_DATA
 ; Affects:
-;     BH
+;     FLAGS, BH
 ; Preserves:
 ;     DX
 ; ---------------------------------------------------------------------------
@@ -265,13 +265,15 @@ identifyIDEDevice:
 
 	or ax,ax				; no sectors?
 	jnz .copyWPCOMP
+	mov byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_NONE
 	mov word [di + IDE_DEVICES_DATA_WPCOMP_OFFSET],ax
-	jmp .copyTypeAndFeatures
+	jmp .copyGeneralAndFeatures
 
 .copyWPCOMP:
+	mov byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_USER
 	mov word [di + IDE_DEVICES_DATA_WPCOMP_OFFSET],IDE_PARAMETER_CHS_WPCOMP_MAX
 
-.copyTypeAndFeatures:
+.copyGeneralAndFeatures:
 	mov ax,[si + ATA_IDENTIFY_DEVICE_GENERAL_OFFSET]
 	mov word [di + IDE_DEVICES_DATA_GENERAL_HIGH_OFFSET],ax
 

@@ -267,23 +267,22 @@ drawIDEDeviceParameters:
 	mov dl,IDE_DEVICE_REGION_TYPE_OFFSET
 	call directWriteChar
 
-	mov dl,IDE_DEVICE_REGION_TYPE_OFFSET
+	push ax
+	push dx
 
-	cmp word [di + IDE_DEVICES_DATA_CYLINDERS_OFFSET],0
-	jnz .selectUser
+	xor ah,ah
+	mov byte al,[di + IDE_DEVICES_DATA_TYPE_OFFSET]
+	xor bh,bh
+	mov bl,MSG_IDE_DEVICE_TYPE_LENGTH
+	mul bl
 
-.selectNone:	
+	pop dx
+
 	mov si,sIDEDeviceTypeNone
-	jmp .writeDeviceType
+	add si,ax				; which IDE Device Type string
 
-.selectUser:
-	mov si,sIDEDeviceTypeUser
-	jmp .writeDeviceType
+	pop ax
 
-.selectAuto:
-	mov si,sIDEDeviceTypeAuto
-
-.writeDeviceType:
 	call directWriteAt
 
 	mov bh,ah				; color attribute for directWriteInteger
@@ -435,6 +434,26 @@ clearIDEDeviceParameterRegion:
 
 	ret
 
+; Loads SI with the IDE_DEVICES_DATA offset calculated based on the given IDE Device index.
+; Input:
+;     BH - Y position within IDE_DEVICES_REGION structure (TOP, TOP + 1, TOP + 2, TOP + 3)
+; Output:
+;     AX - IDE_DEVICES_DATA offset
+;     SI - IDE_DEVICES_DATA offset
+; Affects:
+;     FLAGS, BX
+; Preserves:
+;     none
+; ---------------------------------------------------------------------------
+loadIDEDeviceDataOffset:
+	sub bh,IDE_DEVICES_REGION_TOP		; infer IDE Device index from bh (row = ID)
+	xchg bh,bl				; switch IDE Device index to bl
+	call calculateIDEDevicesDataOffset
+
+	mov si,ax				; IDE_DEVICES_DATA offset
+
+	ret
+
 ; Allows editing of the given IDE Device Parameter.
 ; Input:
 ;     BH - Y position within IDE_DEVICES_REGION structure (TOP, TOP + 1, TOP + 2, TOP + 3)
@@ -444,11 +463,11 @@ clearIDEDeviceParameterRegion:
 ; Output:
 ;     none
 ; Affects:
-;     FLAGS, DI
+;     FLAGS, AX, DI
 ; Preserves:
 ;     BX, CX, DX, SI
 ; ---------------------------------------------------------------------------
-editIDEDeviceParameter:
+editIDEDeviceNumericParameter:
 	push bp
 	mov bp,sp
 
@@ -459,13 +478,7 @@ editIDEDeviceParameter:
 	push dx
 	push si
 
-	; TODO : Can this be further optimized?
-
-	sub bh,IDE_DEVICES_REGION_TOP		; infer IDE Device index from bh (row = ID)
-	xchg bh,bl				; switch IDE Device index to bl
-	call calculateIDEDevicesDataOffset
-
-	mov si,ax				; IDE_DEVICES_DATA offset
+	call loadIDEDeviceDataOffset
 
 	push si					; later on will be popped as di
 
@@ -629,6 +642,126 @@ editIDEDeviceParameter:
 
 	ret
 
+; Allows editing of IDE Devices text parameters.
+; Input:
+;     BH - Y position within IDE_DEVICES_REGION structure (TOP, TOP + 1, TOP + 2, TOP + 3)
+;     BL - region parameter ID
+;     DH - row
+;     DL - column
+; Output:
+;     none
+; Affects:
+;     FLAGS, AX
+; Preserves:
+;     BX, DX, SI
+; ---------------------------------------------------------------------------
+editIDEDeviceTextParameter:
+	push bp
+	mov bp,sp
+
+	sub sp,4				; allocate 4 bytes
+	; word [bp - 2]: initial IDE Device Type string index
+	; word [bp - 4]: IDE_DEVICES_DATA offset
+
+	push bx
+	push dx
+	push si
+
+	or bl,bl				; is the TYPE parameter focused?
+	jnz .exit
+
+	call loadIDEDeviceDataOffset
+
+	mov [bp - 4],si				; store IDE_DEVICES_DATA offset
+
+	; TODO : Extract as separate function?
+	; TODO : Optimize.
+
+	push dx
+
+	xor ah,ah
+	mov byte al,[si + IDE_DEVICES_DATA_TYPE_OFFSET]
+
+	push ax					; store type parameter counter
+
+	xor bh,bh
+	mov bl,MSG_IDE_DEVICE_TYPE_LENGTH
+	mul bl
+
+	pop bx					; restore type parameter counter
+
+	pop dx
+
+	mov si,sIDEDeviceTypeNone		; first IDE Device Type string
+	add si,ax				; which IDE Device Type string
+
+	mov word [bp - 2],si			; store current IDE Device Type for reverting in case of ESCAPE
+
+.editParameterLoop:
+	mov ah,01h				; read the state of the keyboard buffer
+	int 16h
+	jz .editParameterLoop
+
+	mov ah,00h				; read key press
+	int 16h
+
+	cmp ax,KEYBOARD_ESC
+	je .exitNoSave
+	cmp ax,KEYBOARD_ENTER
+	je .exitSave
+	cmp ax,KEYBOARD_PAGE_UP
+	je .executePageUp
+	cmp ax,KEYBOARD_PAGE_DOWN
+	je .executePageDown
+
+.executePageUp:
+	or bl,bl
+	jz .editParameterLoop
+	dec bl					; previous type
+
+	sub si,MSG_IDE_DEVICE_TYPE_LENGTH	; previous IDE Device Type string
+
+	jmp .writeParameter
+
+.executePageDown:
+	cmp bl,2
+	jz .editParameterLoop
+	inc bl					; next type
+
+	add si,MSG_IDE_DEVICE_TYPE_LENGTH	; next IDE Device Type string
+
+.writeParameter:
+	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
+	mov dl,IDE_DEVICE_REGION_TYPE_OFFSET
+	call directWriteAt
+
+	; TODO : Redraw all parameters line.
+
+	jmp .editParameterLoop
+
+.exitSave:
+	mov ax,[bp - 4]				; restore IDE_DEVICES_DATA offset
+	mov si,ax
+	mov byte [si + IDE_DEVICES_DATA_TYPE_OFFSET],bl
+
+	jmp .exit
+
+.exitNoSave:
+	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
+	mov dl,IDE_DEVICE_REGION_TYPE_OFFSET
+	mov si,[bp - 2]				; restore initial IDE Device Type
+	call directWriteAt
+
+.exit:
+	pop si
+	pop dx
+	pop bx
+
+	mov sp,bp
+	pop bp
+
+	ret
+
 ; Allows editing of the IDE Devices Parameters.
 ; Input:
 ;     none
@@ -670,10 +803,6 @@ defineIDEDevicesParameters:
 	je .exit
 	cmp ax,KEYBOARD_ENTER
 	je .executeAction
-	cmp ax,KEYBOARD_PAGE_UP
-	je .executePageUp
-	cmp ax,KEYBOARD_PAGE_DOWN
-	je .executePageDown
 	cmp ax,KEYBOARD_UP
 	je .moveUp
 	cmp ax,KEYBOARD_DOWN
@@ -686,28 +815,25 @@ defineIDEDevicesParameters:
 	jmp .editParametersLoop
 
 .executeAction:
-	or bl,bl				; skip first region
-	je .editParametersLoop
-	cmp bl,IDE_DEVICE_REGION_COUNT - 1	; skip last region
-	je .editParametersLoop
-
 	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
 	call highlightRegion
 
-	call editIDEDeviceParameter
+	or bl,bl
+	je .enterEditModeText
+	cmp bl,IDE_DEVICE_REGION_COUNT - 1	; skip last region
+	je .exitEditMode
 
+.enterEditModeNumber:
+	call editIDEDeviceNumericParameter
+
+	jmp .exitEditMode
+
+.enterEditModeText:
+	call editIDEDeviceTextParameter
+
+.exitEditMode:
 	mov ah,BIOS_SELECTED_COLOR
 	call highlightRegion
-
-	jmp .editParametersLoop
-
-.executePageUp:
-	; TODO : Implement Page Up functionality.
-
-	jmp .editParametersLoop
-
-.executePageDown:
-	; TODO : Implement Page Down functionality.
 
 	jmp .editParametersLoop
 
