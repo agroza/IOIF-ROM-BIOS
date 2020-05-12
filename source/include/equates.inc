@@ -7,16 +7,12 @@
 ; - License: GNU General Public License v3.0                                -
 ; ---------------------------------------------------------------------------
 
-; General Constants
+; ROM: General Constants
 ; ---------------------------------------------------------------------------
 DOSSTART					EQU	100h
 ROMSTART					EQU	0000h
 ROMSIZE						EQU	2000h
 ROMBLOCKS					EQU	ROMSIZE / 512
-
-; Messages (Strings) Constants
-; ---------------------------------------------------------------------------
-MSG_IDE_DEVICE_LENGTH				EQU	20
 
 ; System: Video BIOS Constants
 ; ---------------------------------------------------------------------------
@@ -75,6 +71,10 @@ BIOS_HIGHLIGHT_TEXT_COLOR			EQU	(COLOR_BLUE << 4) + COLOR_LIGHTCYAN
 IDE_FEATURE_ABSENT				EQU	(COLOR_BLUE << 4) + COLOR_LIGHTRED
 IDE_FEATURE_PRESENT				EQU	(COLOR_BLUE << 4) + COLOR_LIGHTGREEN
 IDE_FEATURE_POSSIBLE				EQU	(COLOR_BLUE << 4) + COLOR_LIGHTYELLOW
+
+; Text-Mode User Interface: Messages (Strings) Constants
+; ---------------------------------------------------------------------------
+MSG_IDE_DEVICE_LENGTH				EQU	20
 
 ; Text-Mode User Interface: IDE Devices Regions Constants
 ; ---------------------------------------------------------------------------

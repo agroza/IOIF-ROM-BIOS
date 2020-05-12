@@ -234,8 +234,6 @@ identifyIDEDevice:
 
 	sti
 
-	xor al,al				; assume success
-
 	jmp .processATAIdentifyDeviceData
 
 .clearATAIdentifyDeviceData:
@@ -245,14 +243,8 @@ identifyIDEDevice:
 
 	rep stosw				; fill the buffer with device data
 
-	mov al,1				; assume error
-
 .processATAIdentifyDeviceData:
 	pop ds					; DS:SI = CS:SI
-
-	; TODO : Reconsider having a result value. It might be useless...
-
-	push ax					; save routine return value
 
 	mov bl,[bp - 5]				; IDE Device ID
 	call calculateIDEDevicesDataOffset
@@ -303,8 +295,6 @@ identifyIDEDevice:
 	mov cx,IDE_DEVICES_DATA_MODEL_LENGTH	; read 40 characters (20 words)
 	call copyWordsExchangeBytes
 
-	pop ax
-
 	pop di
 	pop si
 	pop dx
@@ -341,13 +331,19 @@ autodetectIDEDevice:
 
 	pop si					; restore pointer to IDE_INTERFACE_DEVICE_X
 
+	mov bl,[si + IDE_INTERFACE_DEVICE + 1]	; get device ID
+	call calculateIDEDevicesDataOffset
+
+	push ax					; save IDE_DEVICES_DATA offset
+
 	call identifyIDEDevice
 
-	mov ah,HIGHLIGHT_TEXT_COLOR
-	or al,al
-	jnz .detectNone
+	pop si					; restore IDE_DEVICES_DATA offset
 
-	mov si,IDE_DEVICES_DATA + IDE_DEVICES_DATA_MODEL_OFFSET
+	mov ah,HIGHLIGHT_TEXT_COLOR
+	add si,IDE_DEVICES_DATA_MODEL_OFFSET
+	cmp byte [si],0
+	je .detectNone
 
 	jmp .exit
 

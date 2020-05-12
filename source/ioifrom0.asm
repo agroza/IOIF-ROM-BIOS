@@ -40,6 +40,7 @@ section .text
 %include ".\source\eeprom.asm"
 %include ".\source\detect.asm"
 %include ".\source\setup.asm"
+;%include ".\source\interrupts.asm"
 
 %include ".\source\include\data.inc"
 %include ".\source\include\messages.inc"

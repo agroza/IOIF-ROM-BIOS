@@ -872,6 +872,31 @@ clearDeviceInformation:
 
 	ret
 
+; Writes the string at SI, if it is not null. Otherwise writes N/A.
+; Input:
+;     AH - color attribute
+;     DH - row
+;     DL - column
+;     SI - pointer to string
+; Output:
+;     none
+; Affects:
+;     FLAGS, SI 
+; Preserves:
+;     none
+; ---------------------------------------------------------------------------
+writeStringOrNA:
+	cmp byte [si],0
+	jne .writeString
+
+.writeNA:
+	mov si,sIDEDeviceNA
+
+.writeString:
+	call directWriteAt
+
+	ret
+
 ; Displays information about the selected IDE Device.
 ; Input:
 ;     BL - Y position within IDE_DEVICES_REGION structure (TOP, TOP + 1, TOP + 2, TOP + 3)
@@ -901,19 +926,19 @@ deviceInformation:
 	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
 	mov si,bx
 	add si,IDE_DEVICES_DATA_MODEL_OFFSET
-	call directWriteAt
+	call writeStringOrNA
 
 	inc dh					; row
 	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
 	mov si,bx
 	add si,IDE_DEVICES_DATA_SERIAL_OFFSET
-	call directWriteAt
+	call writeStringOrNA
 
 	inc dh					; row
 	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET	
 	mov si,bx
 	add si,IDE_DEVICES_DATA_REVISION_OFFSET
-	call directWriteAt
+	call writeStringOrNA
 
 	inc dh					; row
 	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
