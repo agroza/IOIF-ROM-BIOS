@@ -216,8 +216,8 @@ calculateDisplayIDEDeviceSize:
 	mov ah,bh
 	call clearIDEDeviceParameterRegion
 
-	push bx					; save color attribute
-	push dx					; save row,column
+	push bx					; store color attribute
+	push dx					; store row,column
 
 	mov ax,[di + IDE_DEVICES_DATA_HEADS_OFFSET]
 	mov bx,[di + IDE_DEVICES_DATA_SECTORS_OFFSET]
@@ -232,6 +232,34 @@ calculateDisplayIDEDeviceSize:
 	pop bx					; restore color attribute
 
 	call directWriteInteger
+
+	ret
+
+; Loads SI with the indexed IDE Device Type string located by the given IDE Device Type.
+; Input:
+;     AL - IDE Device Type
+; Output:
+;     SI - pointer to indexed IDE Device Type string
+; Affects:
+;     FLAGS
+; Preserves:
+;     AX, DX
+; ---------------------------------------------------------------------------
+loadIDEDeviceTypeOffset:
+	push ax
+	push dx
+
+	xor ah,ah
+	xor bh,bh
+	mov bl,MSG_IDE_DEVICE_TYPE_LENGTH
+	mul bl
+
+	pop dx
+
+	mov si,sIDEDeviceTypeNone		; first IDE Device Type string
+	add si,ax				; indexed IDE Device Type string
+
+	pop ax
 
 	ret
 
@@ -267,22 +295,8 @@ drawIDEDeviceParameters:
 	mov dl,IDE_DEVICE_REGION_TYPE_OFFSET
 	call directWriteChar
 
-	push ax
-	push dx
-
-	xor ah,ah
 	mov byte al,[di + IDE_DEVICES_DATA_TYPE_OFFSET]
-	xor bh,bh
-	mov bl,MSG_IDE_DEVICE_TYPE_LENGTH
-	mul bl
-
-	pop dx
-
-	mov si,sIDEDeviceTypeNone
-	add si,ax				; which IDE Device Type string
-
-	pop ax
-
+	call loadIDEDeviceTypeOffset
 	call directWriteAt
 
 	mov bh,ah				; color attribute for directWriteInteger
@@ -471,7 +485,7 @@ editIDEDeviceNumericParameter:
 	push bp
 	mov bp,sp
 
-	sub sp,2				; allocate 2 bytes for input value
+	sub sp,2				; word [bp - 2]: input value
 
 	push bx
 	push cx
@@ -659,43 +673,27 @@ editIDEDeviceTextParameter:
 	push bp
 	mov bp,sp
 
-	sub sp,4				; allocate 4 bytes
-	; word [bp - 2]: initial IDE Device Type string index
-	; word [bp - 4]: IDE_DEVICES_DATA offset
+	sub sp,2				; word [bp - 2]: initial IDE Device Type string index
 
 	push bx
+	push cx
 	push dx
 	push si
 
 	or bl,bl				; is the TYPE parameter focused?
 	jnz .exit
 
-	call loadIDEDeviceDataOffset
-
-	mov [bp - 4],si				; store IDE_DEVICES_DATA offset
-
-	; TODO : Extract as separate function?
 	; TODO : Optimize.
 
-	push dx
+	call loadIDEDeviceDataOffset
 
-	xor ah,ah
+	mov cx,si				; IDE_DEVICES_DATA offset
+
 	mov byte al,[si + IDE_DEVICES_DATA_TYPE_OFFSET]
+	call loadIDEDeviceTypeOffset
 
-	push ax					; store type parameter counter
-
-	xor bh,bh
-	mov bl,MSG_IDE_DEVICE_TYPE_LENGTH
-	mul bl
-
-	pop bx					; restore type parameter counter
-
-	pop dx
-
-	mov si,sIDEDeviceTypeNone		; first IDE Device Type string
-	add si,ax				; which IDE Device Type string
-
-	mov word [bp - 2],si			; store current IDE Device Type for reverting in case of ESCAPE
+	mov bl,al				; IDE Device Type
+	mov word [bp - 2],si			; store current IDE Device Type string offset
 
 .editParameterLoop:
 	mov ah,01h				; read the state of the keyboard buffer
@@ -740,8 +738,7 @@ editIDEDeviceTextParameter:
 	jmp .editParameterLoop
 
 .exitSave:
-	mov ax,[bp - 4]				; restore IDE_DEVICES_DATA offset
-	mov si,ax
+	mov si,cx				; IDE_DEVICES_DATA offset
 	mov byte [si + IDE_DEVICES_DATA_TYPE_OFFSET],bl
 
 	jmp .exit
@@ -749,12 +746,13 @@ editIDEDeviceTextParameter:
 .exitNoSave:
 	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
 	mov dl,IDE_DEVICE_REGION_TYPE_OFFSET
-	mov si,[bp - 2]				; restore initial IDE Device Type
+	mov si,[bp - 2]				; restore initial IDE Device Type string offset
 	call directWriteAt
 
 .exit:
 	pop si
 	pop dx
+	pop cx
 	pop bx
 
 	mov sp,bp

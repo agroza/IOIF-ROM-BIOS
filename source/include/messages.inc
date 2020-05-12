@@ -32,6 +32,8 @@ sIDEDeviceTypeUser		DB 'USER',0
 sIDEDeviceTypeAuto		DB 'AUTO',0
 
 sIDEDeviceModeCHS		DB 'CHS',0
+sIDEDeviceModeLRG		DB 'LRG',0
+sIDEDeviceModeLBA		DB 'LBA',0
 
 sIDEDeviceNA			DB 'N/A',0
 sIDEDeviceModel			DB 'Model',0
