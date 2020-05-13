@@ -323,15 +323,17 @@ directWrite:
 ; Affects:
 ;     none
 ; Preserves:
-;     none
+;     DX
 ; ---------------------------------------------------------------------------
 directWriteAt:
-	; TODO : It would be a good ideea to store DX. Might reduce code size.
+	push dx
 
 	push ax
 	call moveCursor
 	pop ax
 	call directWrite
+
+	pop dx
 
 	ret
 

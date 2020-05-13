@@ -125,12 +125,11 @@ drawSetupTUI:
 	mov si,sProgram
 	call directWriteAt
 
-	mov dl,2				; column
+	inc dh
 	mov si,sCopyright
 	call directWriteAt
 
 	mov dh,4				; row
-	mov dl,2				; column
 	mov si,sIDEDevices
 	call directWriteAt
 
@@ -146,22 +145,18 @@ drawSetupTUI:
 	call directWriteChar
 
 	inc dh					; row
-	mov dl,2				; column
 	mov si,sIDEDevicePM
 	call directWriteAt
 
 	inc dh					; row
-	mov dl,2				; column
 	mov si,sIDEDevicePS
 	call directWriteAt
 
 	inc dh					; row
-	mov dl,2				; column
 	mov si,sIDEDeviceSS
 	call directWriteAt
 
 	inc dh					; row
-	mov dl,2				; column
 	mov si,sIDEDeviceSS
 	call directWriteAt
 
@@ -171,22 +166,18 @@ drawSetupTUI:
 	call directWriteAt
 
 	mov dh,MAIN_MENU_AUTODETECT_ALL
-	mov dl,MAIN_MENU_REGION_OFFSET + 1
 	mov si,sMainMenuAutodetectAll
 	call directWriteAt
 
 	mov dh,MAIN_MENU_DEVICE_INFORMATION
-	mov dl,MAIN_MENU_REGION_OFFSET + 1
 	mov si,sMainMenuDeviceInformation
 	call directWriteAt
 
 	mov dh,MAIN_MENU_EXIT
-	mov dl,MAIN_MENU_REGION_OFFSET + 1
 	mov si,sMainMenuExit
 	call directWriteAt
 
 	mov dh,MAIN_MENU_SAVE_AND_EXIT
-	mov dl,MAIN_MENU_REGION_OFFSET + 1
 	mov si,sMainMenuSaveAndExit
 	call directWriteAt
 
@@ -1053,34 +1044,29 @@ deviceInformation:
 	call writeStringOrNA
 
 	inc dh					; row
-	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
 	mov si,bx
 	add si,IDE_DEVICES_DATA_SERIAL_OFFSET
 	call writeStringOrNA
 
 	inc dh					; row
-	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET	
 	mov si,bx
 	add si,IDE_DEVICES_DATA_REVISION_OFFSET
 	call writeStringOrNA
 
 	inc dh					; row
-	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
 	mov si,sIDEDeviceGeneralList
 	call directWriteAt
 
 	inc dh					; row
-	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
 	mov si,sIDEDeviceFeaturesList
 	call directWriteAt
 
-	; TODO : Testing for cylinders <> 0. It is ugly and needs refactor.
-
-	cmp word [bx],0				; no cylinders?
-	je .exit
-
 .highlight:
 	mov si,bx				; IDE_DEVICES_DATA offset
+
+	cmp byte [si + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_NONE
+	je .exit
+
 	xor bx,bx				; extra condition is false
 
 	dec dh					; move to General row
@@ -1119,14 +1105,13 @@ deviceInformation:
 	mov cx,IDE_DEVICE_FEATURE_DMA_LENGTH
 	call highlightFeature
 
-	; TODO : Refactor this part of the routine.
-	; IORDY availability could be better signalled.
-	; IORDY could be available if drive exists. So bl is number of cylinders.
+	; TODO : Improve this section.
+	; IORDY could be available if the drive exists. So bl holds IDE Device Type.
 
 	push bx
 
 	mov al,ATA_ID_DEV_FEATURE_IORDY_FLAG
-	mov bl,[si + IDE_DEVICES_DATA_CYLINDERS_OFFSET + 1]
+	mov bl,[si + IDE_DEVICES_DATA_TYPE_OFFSET]
 	add dl,IDE_DEVICE_FEATURE_IORDY_OFFSET
 	mov cx,IDE_DEVICE_FEATURE_IORDY_LENGTH
 	call highlightFeature
@@ -1183,22 +1168,18 @@ viewIDEDevicesInformation:
 	call directWriteAt
 
 	inc dh					; row
-	mov dl,IDE_DEVICE_INFO_KEY_OFFSET
 	mov si,sIDEDeviceSerial
 	call directWriteAt
 
 	inc dh					; row
-	mov dl,IDE_DEVICE_INFO_KEY_OFFSET
 	mov si,sIDEDeviceRevision
 	call directWriteAt
 
 	inc dh					; row
-	mov dl,IDE_DEVICE_INFO_KEY_OFFSET
 	mov si,sIDEDeviceGeneral
 	call directWriteAt
 
 	inc dh					; row
-	mov dl,IDE_DEVICE_INFO_KEY_OFFSET
 	mov si,sIDEDeviceFeatures
 	call directWriteAt
 
