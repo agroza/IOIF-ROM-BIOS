@@ -78,3 +78,11 @@ section .bss
 	;     Offset: 86 :  1 byte  - general coniguration register - low
 	;     Offset: 87 :  1 byte  - device features register
 	IDE_DEVICES_DATA		RESB	IDE_DEVICES_DATA_SIZE * IDE_DEVICES_DATA_DEVICES_COUNT
+
+	; IDE_DEVICES_PRESERVED_DATA is a memory array used to temporarily preserve IDE parameters, being structured as:
+	;     Offset:  0 :  1 word  - cylinders
+	;     Offset:  2 :  1 word  - heads
+	;     Offset:  4 :  1 word  - sectors
+	;     Offset:  6 :  1 word  - write precompensation
+	;     Offset:  8 :  1 word  - landing zone
+	IDE_DEVICES_PRESERVED_DATA	RESB	10

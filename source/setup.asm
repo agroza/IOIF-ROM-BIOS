@@ -266,15 +266,11 @@ loadIDEDeviceTypeOffset:
 ;     BX, CX, DX, SI
 ; ---------------------------------------------------------------------------
 drawIDEDeviceParameters:
-	push bp
-	mov bp,sp
-
 	push bx
 	push cx
 	push dx
 	push si
 
-	mov bl,[si + IDE_INTERFACE_DEVICE + 1]	; get device ID
 	call calculateIDEDevicesDataOffset
 
 	mov di,ax				; IDE_DEVICES_DATA offset
@@ -324,9 +320,6 @@ drawIDEDeviceParameters:
 	pop cx
 	pop bx
 
-	mov sp,bp
-	pop bp
-
 	ret
 
 ; Writes all parameters of all IDE Devices.
@@ -345,6 +338,7 @@ drawIDEDevicesParameters:
 
 	mov cx,IDE_DEVICES_DATA_DEVICES_COUNT
 .drawParameters:
+	mov bl,[si + IDE_INTERFACE_DEVICE + 1]	; get device ID
 	call drawIDEDeviceParameters
 
 	inc dh					; next row
@@ -401,6 +395,7 @@ detectIDEDevicesParameters:
 
 	call identifyIDEDevice
 
+	mov bl,[si + IDE_INTERFACE_DEVICE + 1]	; get device ID
 	call drawIDEDeviceParameters
 
 	inc dh					; next row
@@ -647,6 +642,124 @@ editIDEDeviceNumericParameter:
 
 	ret
 
+; Zeroes all IDE Device parameters. In addition draws the entire parameters line.
+; Input:
+;     DI - IDE_DEVICES_DATA offset
+;     SI - IDE Device Type string
+; Output:
+;     none
+; Affects:
+;     none
+; Preserves:
+;     BX, CX
+; ---------------------------------------------------------------------------
+drawIDEDeviceParametersHighlightType:
+	push bx
+	push cx
+
+	mov bx,[bp - 4]				; stored bx in editIDEDeviceTextParameter
+	sub bh,IDE_DEVICES_REGION_TOP		; infer IDE Device index from bh (row = ID)
+	xchg bh,bl
+
+	call drawIDEDeviceParameters
+
+	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
+	mov dl,IDE_DEVICE_REGION_TYPE_OFFSET - 1
+
+	mov al,20h				; empty space
+	mov cx,IDE_DEVICE_REGION_TYPE_LENGTH
+	call directWriteChar
+
+	inc dl					; column
+	call directWriteAt			; IDE Device Type string
+
+	pop cx
+	pop bx
+
+	ret
+
+; Zeroes all IDE Device parameters. In addition draws the entire parameters line.
+; Input:
+;     DI - IDE_DEVICES_DATA offset
+; Output:
+;     none
+; Affects:
+;     none
+; Preserves:
+;     CX
+; ---------------------------------------------------------------------------
+zeroDrawIDEDeviceParameters:
+	push cx
+
+	cld
+
+	xor ax,ax
+	mov cx,5
+
+	rep stosw
+
+	pop cx
+
+	call drawIDEDeviceParametersHighlightType
+
+	ret
+
+; Restores preserved IDE Device parameters. In addition draws the entire parameters line.
+; Input:
+;     DI - IDE_DEVICES_DATA offset
+; Output:
+;     none
+; Affects:
+;     none
+; Preserves:
+;     CX, SI
+; ---------------------------------------------------------------------------
+restoreDrawIDEDeviceParameters:
+	push cx
+	push si
+
+	cld
+
+	mov si,IDE_DEVICES_PRESERVED_DATA
+
+	mov cx,5
+
+	rep movsw
+
+	pop si
+	pop cx
+
+	call drawIDEDeviceParametersHighlightType
+
+	ret
+
+; Temporarily preserves current IDE Device parameters.
+; Input:
+;     SI - IDE_DEVICES_DATA offset
+; Output:
+;     none
+; Affects:
+;     none
+; Preserves:
+;     CX, SI
+; ---------------------------------------------------------------------------
+preserveIDEDeviceParameters:
+	push cx
+	push si
+
+	cld
+
+	mov di,IDE_DEVICES_PRESERVED_DATA
+
+	mov cx,5
+
+	rep movsw
+
+	pop si
+	pop cx
+
+	ret
+
 ; Allows editing of IDE Devices text parameters.
 ; Input:
 ;     BH - Y position within IDE_DEVICES_REGION structure (TOP, TOP + 1, TOP + 2, TOP + 3)
@@ -674,9 +787,9 @@ editIDEDeviceTextParameter:
 	or bl,bl				; is the TYPE parameter focused?
 	jnz .exit
 
-	; TODO : Optimize.
+	call loadIDEDeviceDataOffset		; input: bh; output: ax, si
 
-	call loadIDEDeviceDataOffset
+	call preserveIDEDeviceParameters	; input: si
 
 	mov cx,si				; IDE_DEVICES_DATA offset
 
@@ -720,11 +833,17 @@ editIDEDeviceTextParameter:
 	add si,MSG_IDE_DEVICE_TYPE_LENGTH	; next IDE Device Type string
 
 .writeParameter:
-	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
-	mov dl,IDE_DEVICE_REGION_TYPE_OFFSET
-	call directWriteAt
+	mov di,cx				; IDE_DEVICES_DATA offset
 
-	; TODO : Redraw all parameters line.
+	cmp bl,IDE_DEVICES_TYPE_USER
+	je .restoreParameters
+
+	call zeroDrawIDEDeviceParameters
+
+	jmp .editParameterLoop
+
+.restoreParameters:
+	call restoreDrawIDEDeviceParameters
 
 	jmp .editParameterLoop
 
@@ -735,10 +854,8 @@ editIDEDeviceTextParameter:
 	jmp .exit
 
 .exitNoSave:
-	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
-	mov dl,IDE_DEVICE_REGION_TYPE_OFFSET
-	mov si,[bp - 2]				; restore initial IDE Device Type string offset
-	call directWriteAt
+	mov si,[bp - 2]
+	call restoreDrawIDEDeviceParameters
 
 .exit:
 	pop si
@@ -757,16 +874,15 @@ editIDEDeviceTextParameter:
 ; Output:
 ;     none
 ; Affects:
-;     FLAGS
+;     FLAGS, DI
 ; Preserves:
-;     AX, BX, CX, DX, SI, DI
+;     AX, BX, CX, DX, SI
 ; ---------------------------------------------------------------------------
 defineIDEDevicesParameters:
 	push bx
 	push cx
 	push dx
 	push si
-	push di
 
 .selectFirstItem:
 	xor bl,bl				; region parameter ID
@@ -910,7 +1026,6 @@ defineIDEDevicesParameters:
 	mov ah,BIOS_TEXT_COLOR			; destroy any possible selection
 	call highlightRegion
 
-	pop di
 	pop si
 	pop dx
 	pop cx
