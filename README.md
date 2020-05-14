@@ -8,7 +8,7 @@ This repository contains the I/O Interface ROM BIOS source code for the software
 When finished, this computer program will perform the following tasks:
 * Autodetection of up to four IDE devices that might be connected to the two IDE interfaces on the card.
 * Provide a text-mode user interface for the ROM BIOS. This allows for manually configuration of up to four IDE devices.
-* Displaying IDE devices information on demand. Think device model name, serial number, and firmware revision. In addition it will detect the IDE device type (fixed/removable, magnetic/non-magnetic) and whether it supports DMA, LBA, and I/ORDY modes. 
+* Display IDE devices information, on demand. Think device model, serial number, and firmware revision. In addition it will detect the IDE devices type (fixed/removable, magnetic/non-magnetic) and whether they support DMA, LBA, and I/ORDY modes. 
 * INT 13h device control and possibly INT 13h BIOS extensions.
 * Other things that I haven't yet thought about.
 
