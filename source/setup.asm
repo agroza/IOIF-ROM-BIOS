@@ -234,10 +234,11 @@ calculateDisplayIDEDeviceSize:
 ; Affects:
 ;     FLAGS
 ; Preserves:
-;     AX, DX
+;     AX, BX, DX
 ; ---------------------------------------------------------------------------
 loadIDEDeviceTypeOffset:
 	push ax
+	push bx
 	push dx
 
 	xor ah,ah
@@ -250,7 +251,33 @@ loadIDEDeviceTypeOffset:
 	mov si,sIDEDeviceTypeNone		; first IDE Device Type string
 	add si,ax				; indexed IDE Device Type string
 
+	pop bx
 	pop ax
+
+	ret
+
+; Draws a zero or a value based on IDE Device Type.
+; Input:
+;     AX - number
+;     BH - color attribute
+;     DH - row
+;     DL - column
+;     DI - IDE_DEVICES_DATA offset
+; Output:
+;     none
+; Affects:
+;     FLAGS, AX
+; Preserves:
+;     none
+; ---------------------------------------------------------------------------
+drawZeroOrValue:
+	cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_USER
+	je .drawValue
+
+	xor ax,ax
+
+.drawValue:
+	call directWriteInteger
 
 	ret
 
@@ -290,23 +317,23 @@ drawIDEDeviceParameters:
 
 	mov ax,[di + IDE_DEVICES_DATA_CYLINDERS_OFFSET]
 	mov dl,IDE_DEVICE_REGION_CYLINDERS_OFFSET
-	call directWriteInteger
+	call drawZeroOrValue
 
 	mov ax,[di + IDE_DEVICES_DATA_HEADS_OFFSET]
 	mov dl,IDE_DEVICE_REGION_HEADS_OFFSET
-	call directWriteInteger
+	call drawZeroOrValue
 
 	mov ax,[di + IDE_DEVICES_DATA_SECTORS_OFFSET]
 	mov dl,IDE_DEVICE_REGION_SECTORS_OFFSET
-	call directWriteInteger
+	call drawZeroOrValue
 
 	mov ax,[di + IDE_DEVICES_DATA_WPCOMP_OFFSET]
 	mov dl,IDE_DEVICE_REGION_WPCOMP_OFFSET
-	call directWriteInteger
+	call drawZeroOrValue
 
 	mov ax,[di + IDE_DEVICES_DATA_LDZONE_OFFSET]
 	mov dl,IDE_DEVICE_REGION_LDZONE_OFFSET
-	call directWriteInteger
+	call drawZeroOrValue
 
 	call calculateDisplayIDEDeviceSize
 
@@ -434,12 +461,11 @@ clearIDEDeviceParameterRegion:
 
 	ret
 
-; Loads SI with the IDE_DEVICES_DATA offset calculated based on the given IDE Device index.
+; Returns the IDE_DEVICES_DATA offset calculated based on the given IDE Device index.
 ; Input:
 ;     BH - Y position within IDE_DEVICES_REGION structure (TOP, TOP + 1, TOP + 2, TOP + 3)
 ; Output:
 ;     AX - IDE_DEVICES_DATA offset
-;     SI - IDE_DEVICES_DATA offset
 ; Affects:
 ;     FLAGS, BX
 ; Preserves:
@@ -449,8 +475,6 @@ loadIDEDeviceDataOffset:
 	sub bh,IDE_DEVICES_REGION_TOP		; infer IDE Device index from bh (row = ID)
 	xchg bh,bl				; switch IDE Device index to bl
 	call calculateIDEDevicesDataOffset
-
-	mov si,ax				; IDE_DEVICES_DATA offset
 
 	ret
 
@@ -478,7 +502,9 @@ editIDEDeviceNumericParameter:
 	push dx
 	push si
 
-	call loadIDEDeviceDataOffset
+	call loadIDEDeviceDataOffset		; input: bh; output: ax
+
+	mov si,ax				; IDE_DEVICES_DATA offset
 
 	push si					; later on will be popped as di
 
@@ -644,22 +670,16 @@ editIDEDeviceNumericParameter:
 
 ; Zeroes all IDE Device parameters. In addition draws the entire parameters line.
 ; Input:
-;     DI - IDE_DEVICES_DATA offset
 ;     SI - IDE Device Type string
 ; Output:
 ;     none
 ; Affects:
-;     none
+;     AX
 ; Preserves:
 ;     BX, CX
 ; ---------------------------------------------------------------------------
 drawIDEDeviceParametersHighlightType:
-	push bx
 	push cx
-
-	mov bx,[bp - 4]				; stored bx in editIDEDeviceTextParameter
-	sub bh,IDE_DEVICES_REGION_TOP		; infer IDE Device index from bh (row = ID)
-	xchg bh,bl
 
 	call drawIDEDeviceParameters
 
@@ -674,89 +694,6 @@ drawIDEDeviceParametersHighlightType:
 	call directWriteAt			; IDE Device Type string
 
 	pop cx
-	pop bx
-
-	ret
-
-; Zeroes all IDE Device parameters. In addition draws the entire parameters line.
-; Input:
-;     DI - IDE_DEVICES_DATA offset
-; Output:
-;     none
-; Affects:
-;     none
-; Preserves:
-;     CX
-; ---------------------------------------------------------------------------
-zeroDrawIDEDeviceParameters:
-	push cx
-
-	cld
-
-	xor ax,ax
-	mov cx,5
-
-	rep stosw
-
-	pop cx
-
-	call drawIDEDeviceParametersHighlightType
-
-	ret
-
-; Restores preserved IDE Device parameters. In addition draws the entire parameters line.
-; Input:
-;     DI - IDE_DEVICES_DATA offset
-; Output:
-;     none
-; Affects:
-;     none
-; Preserves:
-;     CX, SI
-; ---------------------------------------------------------------------------
-restoreDrawIDEDeviceParameters:
-	push cx
-	push si
-
-	cld
-
-	mov si,IDE_DEVICES_PRESERVED_DATA
-
-	mov cx,5
-
-	rep movsw
-
-	pop si
-	pop cx
-
-	call drawIDEDeviceParametersHighlightType
-
-	ret
-
-; Temporarily preserves current IDE Device parameters.
-; Input:
-;     SI - IDE_DEVICES_DATA offset
-; Output:
-;     none
-; Affects:
-;     none
-; Preserves:
-;     CX, SI
-; ---------------------------------------------------------------------------
-preserveIDEDeviceParameters:
-	push cx
-	push si
-
-	cld
-
-	mov di,IDE_DEVICES_PRESERVED_DATA
-
-	mov cx,5
-
-	rep movsw
-
-	pop si
-	pop cx
 
 	ret
 
@@ -769,7 +706,7 @@ preserveIDEDeviceParameters:
 ; Output:
 ;     none
 ; Affects:
-;     FLAGS, AX
+;     FLAGS, AX, DI
 ; Preserves:
 ;     BX, DX, SI
 ; ---------------------------------------------------------------------------
@@ -777,27 +714,25 @@ editIDEDeviceTextParameter:
 	push bp
 	mov bp,sp
 
-	sub sp,2				; word [bp - 2]: initial IDE Device Type string index
-
+	sub sp,4				; byte [bp - 2]: initial IDE Device Type
+						; word [bp - 4]: initial IDE Device Type string index
 	push bx
-	push cx
 	push dx
 	push si
 
 	or bl,bl				; is the TYPE parameter focused?
 	jnz .exit
 
-	call loadIDEDeviceDataOffset		; input: bh; output: ax, si
+	call loadIDEDeviceDataOffset		; input: bh; output: ax
 
-	call preserveIDEDeviceParameters	; input: si
+	mov di,ax				; IDE_DEVICES_DATA offset
 
-	mov cx,si				; IDE_DEVICES_DATA offset
+	mov byte al,[di + IDE_DEVICES_DATA_TYPE_OFFSET]
+	mov byte [bp - 2],al			; store current IDE Device Type
 
-	mov byte al,[si + IDE_DEVICES_DATA_TYPE_OFFSET]
-	call loadIDEDeviceTypeOffset
+	call loadIDEDeviceTypeOffset		; input: al; output: si
 
-	mov bl,al				; IDE Device Type
-	mov word [bp - 2],si			; store current IDE Device Type string offset
+	mov word [bp - 4],si			; store current IDE Device Type string offset
 
 .editParameterLoop:
 	mov ah,01h				; read the state of the keyboard buffer
@@ -812,55 +747,44 @@ editIDEDeviceTextParameter:
 	cmp ax,KEYBOARD_ENTER
 	je .exitSave
 	cmp ax,KEYBOARD_PAGE_UP
-	je .executePageUp
+	je .modifyPageUp
 	cmp ax,KEYBOARD_PAGE_DOWN
-	je .executePageDown
+	je .modifyPageDown
 
-.executePageUp:
-	or bl,bl
+	jmp .editParameterLoop
+
+.modifyPageUp:
+	cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_NONE
 	jz .editParameterLoop
-	dec bl					; previous type
+	dec byte [di + IDE_DEVICES_DATA_TYPE_OFFSET]
 
 	sub si,MSG_IDE_DEVICE_TYPE_LENGTH	; previous IDE Device Type string
 
 	jmp .writeParameter
 
-.executePageDown:
-	cmp bl,2
+.modifyPageDown:
+	cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_AUTO
 	jz .editParameterLoop
-	inc bl					; next type
+	inc byte [di + IDE_DEVICES_DATA_TYPE_OFFSET]
 
 	add si,MSG_IDE_DEVICE_TYPE_LENGTH	; next IDE Device Type string
 
 .writeParameter:
-	mov di,cx				; IDE_DEVICES_DATA offset
-
-	cmp bl,IDE_DEVICES_TYPE_USER
-	je .restoreParameters
-
-	call zeroDrawIDEDeviceParameters
+	call drawIDEDeviceParametersHighlightType
 
 	jmp .editParameterLoop
-
-.restoreParameters:
-	call restoreDrawIDEDeviceParameters
-
-	jmp .editParameterLoop
-
-.exitSave:
-	mov si,cx				; IDE_DEVICES_DATA offset
-	mov byte [si + IDE_DEVICES_DATA_TYPE_OFFSET],bl
-
-	jmp .exit
 
 .exitNoSave:
-	mov si,[bp - 2]
-	call restoreDrawIDEDeviceParameters
+	mov al,[bp - 2]				; restore initial IDE Device Type
+	mov byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],al
+	mov si,[bp - 4]				; restore initial IDE Device Type string offset
+
+.exitSave:
+	call drawIDEDeviceParametersHighlightType
 
 .exit:
 	pop si
 	pop dx
-	pop cx
 	pop bx
 
 	mov sp,bp
