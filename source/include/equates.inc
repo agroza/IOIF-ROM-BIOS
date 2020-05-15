@@ -11,7 +11,7 @@
 ; ---------------------------------------------------------------------------
 DOSSTART					EQU	100h
 ROMSTART					EQU	0000h
-ROMSIZE						EQU	2000h
+ROMSIZE						EQU	2000h	; bytes
 ROMBLOCKS					EQU	ROMSIZE / 512
 
 ; System: Video BIOS Constants
@@ -257,6 +257,7 @@ IDE_DEVICES_TYPE_NONE				EQU	0
 IDE_DEVICES_TYPE_USER				EQU	1
 IDE_DEVICES_TYPE_AUTO				EQU	2
 
+IDE_DEVICES_STORED_DATA_SIZE			EQU	11	; bytes
 IDE_DEVICES_DATA_SIZE				EQU	88	; bytes
 IDE_DEVICES_DATA_DEVICES_COUNT			EQU	4
 

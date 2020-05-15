@@ -375,7 +375,7 @@ drawIDEDevicesParameters:
 
 	ret
 
-; Highlights the entire Parameters region during IDE Device detection.
+; Highlights the entire parameters region during IDE Device detection.
 ; Input:
 ;     none
 ; Output:
@@ -505,6 +505,9 @@ editIDEDeviceNumericParameter:
 	call loadIDEDeviceDataOffset		; input: bh; output: ax
 
 	mov si,ax				; IDE_DEVICES_DATA offset
+
+	cmp byte [si + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_USER
+	jne .abort
 
 	push si					; later on will be popped as di
 
@@ -658,6 +661,7 @@ editIDEDeviceNumericParameter:
 	mov bh,BIOS_TEXT_COLOR			; color attribute
 	call calculateDisplayIDEDeviceSize
 
+.abort:
 	pop si
 	pop dx
 	pop cx
@@ -668,7 +672,7 @@ editIDEDeviceNumericParameter:
 
 	ret
 
-; Zeroes all IDE Device parameters. In addition draws the entire parameters line.
+; Draws all IDE Device parameters. In addition, highlights the Type parameter.
 ; Input:
 ;     SI - IDE Device Type string
 ; Output:
@@ -755,7 +759,7 @@ editIDEDeviceTextParameter:
 
 .modifyPageUp:
 	cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_NONE
-	jz .editParameterLoop
+	je .editParameterLoop
 	dec byte [di + IDE_DEVICES_DATA_TYPE_OFFSET]
 
 	sub si,MSG_IDE_DEVICE_TYPE_LENGTH	; previous IDE Device Type string
@@ -764,7 +768,7 @@ editIDEDeviceTextParameter:
 
 .modifyPageDown:
 	cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_AUTO
-	jz .editParameterLoop
+	je .editParameterLoop
 	inc byte [di + IDE_DEVICES_DATA_TYPE_OFFSET]
 
 	add si,MSG_IDE_DEVICE_TYPE_LENGTH	; next IDE Device Type string
@@ -792,7 +796,7 @@ editIDEDeviceTextParameter:
 
 	ret
 
-; Allows editing of the IDE Devices Parameters.
+; Allows editing of the IDE Devices parameters.
 ; Input:
 ;     none
 ; Output:

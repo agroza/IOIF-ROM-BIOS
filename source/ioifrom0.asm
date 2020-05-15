@@ -10,6 +10,9 @@
 %define ROM
 ;%define DOS
 
+;%define USETESTDATA
+%define EEPROMWRITE
+
 	use16
 	cpu 286
 
@@ -140,5 +143,5 @@ start:
 %endif
 
 %ifdef ROM
-	TIMES (ROMSIZE-($-$$)-ROMSTART) DB 00h
+	TIMES (ROMSIZE - ($ - $$) - ROMSTART) DB 00h
 %endif

@@ -9,6 +9,19 @@
 
 section .text
 
+	; IDE_PARAMETERS_REGIONS is a memory array, being structured as:
+	;     Offset:  0 :  1 word  - IDE Device region Type offset
+	;     Offset:  2 :  1 word  - IDE Device region Type length
+	;     Offset:  4 :  1 word  - IDE Device region Cylinders offset
+	;     Offset:  6 :  1 word  - IDE Device region Cylinders length
+	;     Offset:  8 :  1 word  - IDE Device region Heads offset
+	;     Offset: 10 :  1 word  - IDE Device region Heads length
+	;     Offset: 12 :  1 word  - IDE Device region Sectors offset
+	;     Offset: 14 :  1 word  - IDE Device region Sectors length
+	;     Offset: 16 :  1 word  - IDE Device region Write Precompensation offset
+	;     Offset: 18 :  1 word  - IDE Device region Write Precompensation length
+	;     Offset: 20 :  1 word  - IDE Device region Landing Zone offset
+	;     Offset: 22 :  1 word  - IDE Device region Landing Zone length
 	IDE_PARAMETERS_REGIONS:
 		DB	IDE_DEVICE_REGION_TYPE_OFFSET - 1, IDE_DEVICE_REGION_TYPE_LENGTH
 		DB	IDE_DEVICE_REGION_CYLINDERS_OFFSET - 1, IDE_DEVICE_REGION_CYLINDERS_LENGTH
@@ -57,6 +70,16 @@ section .text
 		DW	SECONDARY_IDE_INTERFACE, SECONDARY_IDE_INTERFACE_CONTROL
 		DB	IDE_SLAVE_DEVICE, IDE_DEVICES_SECONDARY_SLAVE_ID
 
+	; IDE_DEVICES_STORED_DATA is a ROM storage matrix, each row being structured as:
+	;     Offset:  0 :  1 word  - cylinders
+	;     Offset:  2 :  1 word  - heads
+	;     Offset:  4 :  1 word  - sectors
+	;     Offset:  6 :  1 word  - write precompensation
+	;     Offset:  8 :  1 word  - landing zone
+	;     Offset: 10 :  1 byte  - type
+	IDE_DEVICES_STORED_DATA:
+		TIMES (IDE_DEVICES_STORED_DATA_SIZE * IDE_DEVICES_DATA_DEVICES_COUNT) DB 00h
+
 section .bss
 
 	ATA_IDENTIFY_DEVICE_DATA	RESW	256
@@ -78,11 +101,3 @@ section .bss
 	;     Offset: 86 :  1 byte  - general coniguration register - low
 	;     Offset: 87 :  1 byte  - device features register
 	IDE_DEVICES_DATA		RESB	IDE_DEVICES_DATA_SIZE * IDE_DEVICES_DATA_DEVICES_COUNT
-
-	; IDE_DEVICES_PRESERVED_DATA is a memory array used to temporarily preserve IDE parameters, being structured as:
-	;     Offset:  0 :  1 word  - cylinders
-	;     Offset:  2 :  1 word  - heads
-	;     Offset:  4 :  1 word  - sectors
-	;     Offset:  6 :  1 word  - write precompensation
-	;     Offset:  8 :  1 word  - landing zone
-	IDE_DEVICES_PRESERVED_DATA	RESB	10
