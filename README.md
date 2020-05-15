@@ -41,5 +41,5 @@ Needless to say that all of these programs require Windows to run.
 
 ### Testing Environment
 * I am performing most of the superficial tests using QEMU. But I am having real difficulties identifying hard disks in the emulator.
-* The real tests are performed on real hardware. The machine is equipped with an 80386DX processor running at 33MHz. Also it has a LAN card, and dual Compact Flash cards in master/slave configuration on the Primary IDE controller.
+* The real tests are performed on real hardware. The machine is equipped with an 80386DX processor running at 33 MHz. Also it has a LAN card, and dual Compact Flash cards in master/slave configuration on the Primary IDE controller.
 * Testing is basically done in no time since I have written a batch script that assembles the ROM in such way that it can be executed directly from MS-DOS. This script also copies the compiled ROM file to a network share drive which is targeted by the 80386 machine. Thus I can go from compilation to real testing in less than 5 seconds.
