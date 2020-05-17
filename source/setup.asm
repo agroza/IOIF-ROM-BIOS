@@ -248,7 +248,7 @@ loadIDEDeviceTypeOffset:
 
 	pop dx
 
-	mov si,sIDEDeviceTypeNone		; first IDE Device Type string
+	mov si,sIDEDeviceTypeAuto		; first IDE Device Type string
 	add si,ax				; indexed IDE Device Type string
 
 	pop bx
@@ -284,7 +284,7 @@ drawZeroOrValue:
 ; Writes a line of IDE Device parameters.
 ; Input:
 ;     DH - row
-;     SI - pointer to IDE_INTERFACE_DEVICE_X structure, where X = 0, 1, 2, 3
+;     SI - pointer to IDE_INTERFACE_DEVICE array
 ; Output:
 ;     none
 ; Affects:
@@ -361,7 +361,7 @@ drawIDEDeviceParameters:
 ; ---------------------------------------------------------------------------
 drawIDEDevicesParameters:
 	mov dh,IDE_DEVICES_REGION_PRIMARY_MASTER
-	mov si,IDE_INTERFACES_DEVICE_0		; first IDE Interface: Primary Master (Device 0)
+	mov si,IDE_INTERFACES_DEVICE		; first IDE Interface: Primary Master (Device 0)
 
 	mov cx,IDE_DEVICES_DATA_DEVICES_COUNT
 .drawParameters:
@@ -414,7 +414,7 @@ detectIDEDevicesParameters:
 	push dx
 
 	mov dh,IDE_DEVICES_REGION_PRIMARY_MASTER
-	mov si,IDE_INTERFACES_DEVICE_0		; first IDE Interface: Primary Master (Device 0)
+	mov si,IDE_INTERFACES_DEVICE		; first IDE Interface: Primary Master (Device 0)
 
 	mov cx,IDE_DEVICES_DATA_DEVICES_COUNT
 .drawParameters:
@@ -463,7 +463,7 @@ clearIDEDeviceParameterRegion:
 
 ; Returns the IDE_DEVICES_DATA offset calculated based on the given IDE Device index.
 ; Input:
-;     BH - Y position within IDE_DEVICES_REGION structure (TOP, TOP + 1, TOP + 2, TOP + 3)
+;     BH - Y position within IDE_DEVICES_REGION array (TOP, TOP + 1, TOP + 2, TOP + 3)
 ; Output:
 ;     AX - IDE_DEVICES_DATA offset
 ; Affects:
@@ -480,7 +480,7 @@ loadIDEDeviceDataOffset:
 
 ; Allows editing of the given IDE Device Parameter.
 ; Input:
-;     BH - Y position within IDE_DEVICES_REGION structure (TOP, TOP + 1, TOP + 2, TOP + 3)
+;     BH - Y position within IDE_DEVICES_REGION array (TOP, TOP + 1, TOP + 2, TOP + 3)
 ;     BL - region parameter ID
 ;     DH - row
 ;     DL - column
@@ -516,7 +516,7 @@ editIDEDeviceNumericParameter:
 	sub bl,1				; skip TYPE, bl now holds editable parameter index
 	shl bx,1				; multiply by word size
 
-	add si,bx				; offset of parameter in the IDE_DEVICES_DATA memory matrix
+	add si,bx				; offset of parameter in the IDE_DEVICES_DATA memory storage matrix
 
 	mov cx,1				; write one time
 	inc dl					; column
@@ -703,7 +703,7 @@ drawIDEDeviceParametersHighlightType:
 
 ; Allows editing of IDE Devices text parameters.
 ; Input:
-;     BH - Y position within IDE_DEVICES_REGION structure (TOP, TOP + 1, TOP + 2, TOP + 3)
+;     BH - Y position within IDE_DEVICES_REGION array (TOP, TOP + 1, TOP + 2, TOP + 3)
 ;     BL - region parameter ID
 ;     DH - row
 ;     DL - column
@@ -758,7 +758,7 @@ editIDEDeviceTextParameter:
 	jmp .editParameterLoop
 
 .modifyPageUp:
-	cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_NONE
+	cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_AUTO
 	je .editParameterLoop
 	dec byte [di + IDE_DEVICES_DATA_TYPE_OFFSET]
 
@@ -767,7 +767,7 @@ editIDEDeviceTextParameter:
 	jmp .writeParameter
 
 .modifyPageDown:
-	cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_AUTO
+	cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_NONE
 	je .editParameterLoop
 	inc byte [di + IDE_DEVICES_DATA_TYPE_OFFSET]
 
@@ -1057,7 +1057,7 @@ writeStringOrNA:
 
 ; Displays information about the selected IDE Device.
 ; Input:
-;     BL - Y position within IDE_DEVICES_REGION structure (TOP, TOP + 1, TOP + 2, TOP + 3)
+;     BL - Y position within IDE_DEVICES_REGION array (TOP, TOP + 1, TOP + 2, TOP + 3)
 ; Output:
 ;     none
 ; Affects:
@@ -1069,6 +1069,8 @@ deviceInformation:
 	push bx
 	push cx
 	push dx
+
+	; TODO : Identify device if not yet done.
 
 	mov cl,IDE_DEVICE_INFO_VALUE_OFFSET	; starting column
 	call clearDeviceInformation
@@ -1310,7 +1312,7 @@ viewIDEDevicesInformation:
 	mov ah,BIOS_TEXT_COLOR			; destroy any possible selection
 	call highlightRegion
 
-	mov cl,IDE_DEVICE_INFO_KEY_OFFSET - 1	; starting column
+	mov cl,IDE_DEVICE_INFO_KEY_OFFSET - 2	; starting column
 	call clearDeviceInformation
 
 	pop dx
@@ -1348,8 +1350,6 @@ enterSetup:
 
 	call drawSetupTUI
 
-	call readEEPROMData
-
 	call drawIDEDevicesParameters
 
 .partialRedraw:
@@ -1386,6 +1386,8 @@ enterSetup:
 	je .moveUp
 	cmp ax,KEYBOARD_DOWN
 	je .moveDown
+	cmp ax,KEYBOARD_F10
+	je .saveAndExitSetup
 
 	jmp .mainMenuLoop
 

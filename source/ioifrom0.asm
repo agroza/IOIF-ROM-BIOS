@@ -10,7 +10,7 @@
 %define ROM
 ;%define DOS
 
-;%define USETESTDATA
+%define USETESTDATA
 %define EEPROMWRITE
 
 	use16
@@ -92,6 +92,8 @@ start:
 	jmp .exit
 
 .continue:
+	call readEEPROMData
+
 	mov si,sPressDELKey
 	call directWrite
 
@@ -112,7 +114,7 @@ start:
 
 .autodetectIDEDevices:
 	mov bx,sIDEDevicePM			; first IDE Device string: Primary Master string
-	mov si,IDE_INTERFACES_DEVICE_0		; first IDE Interface: Primary Master (Device 0)
+	mov si,IDE_INTERFACES_DEVICE		; first IDE Interface: Primary Master (Device 0)
 
 	mov cx,IDE_DEVICES_DATA_DEVICES_COUNT
 .nextIDEDevice:

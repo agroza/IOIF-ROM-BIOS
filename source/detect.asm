@@ -90,6 +90,32 @@ calculateIDEDevicesDataOffset:
 
 	ret
 
+; Returns the position within IDE_DEVICES_STORED_DATA, based on the given Device ID.
+; Input:
+;     SI - pointer to IDE_INTERFACE_DEVICE array
+; Output:
+;     AX - position within IDE_DEVICES_STORED_DATA
+; Affects:
+;     FLAGS
+; Preserves:
+;     BX, DX
+; ---------------------------------------------------------------------------
+calculateIDEDevicesStoredDataOffset:
+	push bx
+	push dx
+
+	xor ah,ah
+	mov ax,IDE_DEVICES_STORED_DATA_SIZE
+	xor bh,bh
+	mov byte bl,[si + IDE_INTERFACE_DEVICE + 1]
+	mul bx
+	add ax,IDE_DEVICES_STORED_DATA
+
+	pop dx
+	pop bx
+
+	ret
+
 ; Copies a number of words from SI to DI. Exchanges high and low bytes. Writes null at the end.
 ; Input:
 ;     SI - source strig
@@ -119,7 +145,7 @@ copyWordsExchangeBytes:
 
 ; Identification of an IDE device.
 ; Input:
-;     SI - pointer to IDE_INTERFACE_DEVICE_X structure, where X = 0, 1, 2, 3
+;     SI - pointer to IDE_INTERFACE_DEVICE array
 ; Output:
 ;     AL - 0 = success; 1 = error
 ;     ATA_IDENTIFY_DEVICE_DATA - filled with data if sucess, zeroes if error
@@ -310,7 +336,7 @@ identifyIDEDevice:
 ; Autodetection of an IDE device.
 ; Input:
 ;     BX - pointer to string; current IDE Device (Primary/Secondary; Master/Slave)
-;     SI - pointer to IDE_INTERFACE_DEVICE_X structure, where X = 0, 1, 2, 3
+;     SI - pointer to IDE_INTERFACE_DEVICE array
 ; Output:
 ;     none
 ; Affects:
@@ -323,7 +349,12 @@ autodetectIDEDevice:
 	push cx
 	push si
 
-	push si					; save pointer to IDE_INTERFACE_DEVICE_X
+	call calculateIDEDevicesStoredDataOffset
+	mov di,ax
+	cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_AUTO
+	jne .exit
+
+	push si					; save pointer to IDE_INTERFACE_DEVICE
 
 	mov ah,NORMAL_TEXT_COLOR
 	mov si,sDetectingIDE
@@ -331,7 +362,7 @@ autodetectIDEDevice:
 	mov si,bx				; which IDE Device string (Primary/Secondary; Master/Slave)
 	call directWrite
 
-	pop si					; restore pointer to IDE_INTERFACE_DEVICE_X
+	pop si					; restore pointer to IDE_INTERFACE_DEVICE
 
 	mov bl,[si + IDE_INTERFACE_DEVICE + 1]	; get device ID
 	call calculateIDEDevicesDataOffset
@@ -347,16 +378,17 @@ autodetectIDEDevice:
 	cmp byte [si],0
 	je .detectNone
 
-	jmp .exit
+	jmp .writeModel
 
 .detectNone:
 	mov si,sIDEDeviceTypeNone
 
-.exit:
+.writeModel:
 	call directWrite
 
 	call CRLF
 
+.exit:
 	pop si
 	pop cx
 	pop bx

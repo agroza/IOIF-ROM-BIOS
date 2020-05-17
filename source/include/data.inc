@@ -9,7 +9,7 @@
 
 section .text
 
-	; IDE_PARAMETERS_REGIONS is a memory array, being structured as:
+	; IDE_PARAMETERS_REGIONS is a ROM storage R array, being structured as:
 	;     Offset:  0 :  1 word  - IDE Device region Type offset
 	;     Offset:  2 :  1 word  - IDE Device region Type length
 	;     Offset:  4 :  1 word  - IDE Device region Cylinders offset
@@ -31,7 +31,7 @@ section .text
 		DB	IDE_DEVICE_REGION_LDZONE_OFFSET - 1, IDE_DEVICE_REGION_LDZONE_LENGTH
 		DB	IDE_DEVICE_REGION_MODE_OFFSET - 2, IDE_DEVICE_REGION_MODE_LENGTH
 
-	; IDE_PARAMETERS_CHS is a memory array, being structured as:
+	; IDE_PARAMETERS_CHS is a ROM storage R array, being structured as:
 	;     Offset:  0 :  1 word  - IDE CHS Addressing Cylinders Minimum Value
 	;     Offset:  2 :  1 word  - IDE CHS Addressing Cylinders Maximum Value
 	;     Offset:  4 :  1 word  - IDE CHS Addressing Heads Minimum Value
@@ -49,28 +49,34 @@ section .text
 		DW	IDE_PARAMETER_CHS_WPCOMP_MIN, IDE_PARAMETER_CHS_WPCOMP_MAX
 		DW	IDE_PARAMETER_CHS_LDZONE_MIN, IDE_PARAMETER_CHS_LDZONE_MAX
 
-	; IDE_INTERFACES_DEVICE_X is a memory array, being structured as:
-	;     Offset:  0 :  1 word  - IDE Interface Base Address
-	;     Offset:  2 :  1 word  - IDE Interface Control Address
-	;     Offset:  3 :  1 byte  - IDE Interface Device Master/Slave
-	;     Offset:  4 :  1 byte  - IDE Interface Device ID
-	IDE_INTERFACES_DEVICE_0:
+	; IDE_INTERFACES_DEVICE is a ROM storage R array, being structured as:
+	;     Offset:  0 :  1 word  - Primary IDE Interface Base Address
+	;     Offset:  2 :  1 word  - Primary IDE Interface Control Address
+	;     Offset:  3 :  1 byte  - Primary IDE Interface Device Master
+	;     Offset:  4 :  1 byte  - Primary IDE Interface Device Master ID
+	;     Offset:  0 :  1 word  - Primary IDE Interface Base Address
+	;     Offset:  2 :  1 word  - Primary IDE Interface Control Address
+	;     Offset:  3 :  1 byte  - Primary IDE Interface Device Slave
+	;     Offset:  4 :  1 byte  - Primary IDE Interface Device Slave ID
+	;     Offset:  0 :  1 word  - Secondary IDE Interface Base Address
+	;     Offset:  2 :  1 word  - Secondary IDE Interface Control Address
+	;     Offset:  3 :  1 byte  - Secondary IDE Interface Device Master
+	;     Offset:  4 :  1 byte  - Secondary IDE Interface Device Master ID
+	;     Offset:  0 :  1 word  - Secondary IDE Interface Base Address
+	;     Offset:  2 :  1 word  - Secondary IDE Interface Control Address
+	;     Offset:  3 :  1 byte  - Secondary IDE Interface Device Slave
+	;     Offset:  4 :  1 byte  - Secondary IDE Interface Device Slave ID
+	IDE_INTERFACES_DEVICE:
 		DW	PRIMARY_IDE_INTERFACE, PRIMARY_IDE_INTERFACE_CONTROL
 		DB	IDE_MASTER_DEVICE, IDE_DEVICES_PRIMARY_MASTER_ID
-
-	IDE_INTERFACES_DEVICE_1:
 		DW	PRIMARY_IDE_INTERFACE, PRIMARY_IDE_INTERFACE_CONTROL
 		DB	IDE_SLAVE_DEVICE, IDE_DEVICES_PRIMARY_SLAVE_ID
-
-	IDE_INTERFACES_DEVICE_2:
 		DW	SECONDARY_IDE_INTERFACE, SECONDARY_IDE_INTERFACE_CONTROL
 		DB	IDE_MASTER_DEVICE, IDE_DEVICES_SECONDARY_MASTER_ID
-
-	IDE_INTERFACES_DEVICE_3:
 		DW	SECONDARY_IDE_INTERFACE, SECONDARY_IDE_INTERFACE_CONTROL
 		DB	IDE_SLAVE_DEVICE, IDE_DEVICES_SECONDARY_SLAVE_ID
 
-	; IDE_DEVICES_STORED_DATA is a ROM storage matrix, each row being structured as:
+	; IDE_DEVICES_STORED_DATA is a 4 row ROM storage R/W matrix, each row being structured as:
 	;     Offset:  0 :  1 word  - cylinders
 	;     Offset:  2 :  1 word  - heads
 	;     Offset:  4 :  1 word  - sectors
@@ -78,13 +84,27 @@ section .text
 	;     Offset:  8 :  1 word  - landing zone
 	;     Offset: 10 :  1 byte  - type
 	IDE_DEVICES_STORED_DATA:
+
+	; TODO : Remove Test Data completely.
+
+%ifdef USETESTDATA
+		DW 820,6,17,65535,820
+		DB IDE_DEVICES_TYPE_USER
+		DW 0,0,0,0,0
+		DB IDE_DEVICES_TYPE_NONE
+		DW 820,6,17,65535,820
+		DB IDE_DEVICES_TYPE_USER
+		DW 0,0,0,0,0
+		DB IDE_DEVICES_TYPE_AUTO
+%else
 		TIMES (IDE_DEVICES_STORED_DATA_SIZE * IDE_DEVICES_DATA_DEVICES_COUNT) DB 00h
+%endif
 
 section .bss
 
 	ATA_IDENTIFY_DEVICE_DATA	RESW	256
 
-	; IDE_DEVICES_DATA is a memory matrix, each row being structured as:
+	; IDE_DEVICES_DATA is a 4 row memory storage R/W matrix, each row being structured as:
 	;     Offset:  0 :  1 word  - cylinders
 	;     Offset:  2 :  1 word  - heads
 	;     Offset:  4 :  1 word  - sectors

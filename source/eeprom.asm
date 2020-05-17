@@ -20,16 +20,6 @@ section .text
 ;     none
 ; ---------------------------------------------------------------------------
 readEEPROMData:
-	; TODO : Remove Test Data when it is not needed anymore.
-
-%ifdef USETESTDATA
-	mov word [IDE_DEVICES_DATA + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_USER
-	mov word [IDE_DEVICES_DATA + IDE_DEVICES_DATA_CYLINDERS_OFFSET],820
-	mov word [IDE_DEVICES_DATA + IDE_DEVICES_DATA_HEADS_OFFSET],6
-	mov word [IDE_DEVICES_DATA + IDE_DEVICES_DATA_SECTORS_OFFSET],17
-	mov word [IDE_DEVICES_DATA + IDE_DEVICES_DATA_LDZONE_OFFSET],820
-	mov word [IDE_DEVICES_DATA + IDE_DEVICES_DATA_WPCOMP_OFFSET],65535
-%else
 	cld
 
 	mov si,IDE_DEVICES_STORED_DATA
@@ -47,30 +37,55 @@ readEEPROMData:
 	dec bl
 	jnz .readData
 
-%endif
 	ret
 
 ; Writes all IDE Devices parameters to EEPROM.
 ; Input:
 ;     none
 ; Output:
-;     none
+;     AL - ROM checksum
 ; Affects:
-;     CX, SI, DI
+;     FLAGS, BL, CX, SI, DI
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
 writeEEPROMData:
-	; TODO : Implement EEPROM writing functionality.
-
 %ifdef EEPROMWRITE
+	cld
+
 	mov si,IDE_DEVICES_DATA
 	mov di,IDE_DEVICES_STORED_DATA
-	mov cx,IDE_DEVICES_STORED_DATA_SIZE; * IDE_DEVICES_DATA_DEVICES_COUNT
-	call programEEPROMCode
 
+	mov bl,IDE_DEVICES_DATA_DEVICES_COUNT
+
+.writeData:
 	; TODO : Currently the programEEPROMCode routine writes directly in memory.
 	; It should write to the ROM IC instead.
+
+	mov cx,IDE_DEVICES_STORED_DATA_SIZE
+	call programEEPROMCode
+
+	add si,IDE_DEVICES_DATA_SIZE - IDE_DEVICES_STORED_DATA_SIZE
+
+	dec bl
+	jnz .writeData
+
+.calculateChecksum:
+	xor si,si
+	xor al,al
+
+	mov cx,ROMSIZE - 1			; skip existing checksum byte
+
+.nextByte:
+	add byte al,[si]
+	inc si
+
+	loop .nextByte
+
+	neg al
+
+	inc si
+	mov byte [si],al			; last ROM byte is the recalculated checksum
 %endif
 
 	ret
@@ -82,25 +97,27 @@ writeEEPROMData:
 ;     DI - pointer to IDE_DEVICES_STORED_DATA in EEPROM
 ; Output:
 ;     CX - 0 = success, non-zero = fail
-;     AL - 0 = assume SDP is not present, 1 = assume SDP is present
+;     AH - 0 = assume SDP is not present, 1 = assume SDP is present
 ; Affects:
-;     FLAGS, AH, BX, CX, DX, SI, DI
+;     FLAGS, AH, CX, DX, SI, DI
 ; Preserves:
-;     none
+;     BX
 ; ---------------------------------------------------------------------------
 programEEPROMCode:
+	push bx
+
 	cli
 
 	cld
 
-	xor al,al				; assume SDP is not present
+	xor ah,ah				; assume SDP is not present
 
 .writeEEPROM:
-	mov byte ah,[si]
-	cmp byte [di],ah
+	mov byte al,[si]
+	cmp byte al,[di]
 	je .nextByte
 
-	or al,al				; retest if SDP is present
+	or ah,ah				; retest if SDP is present
 	jz .writeData
 
 .enableSDPWrites:
@@ -109,20 +126,20 @@ programEEPROMCode:
 	mov byte [es:1555h],0A0h		; at page 8 (REV. 0270H–12/99)
 
 .writeData:
-	mov byte [di],ah
+	mov byte [di],al
 
 	xor bx,bx				; wait cycle time counter (2 - 10 ms)
 
 .writeCycleTime:
-	cmp byte [di],ah
+	cmp byte al,[di]
 	je .nextByte
 	dec bx
 	jnz .writeCycleTime
 
-	or al,al				; retest if SDP is present
+	or ah,ah				; retest if SDP is present
 	jnz .exit
 
-	inc al					; assume SDP is present
+	inc ah					; assume SDP is present
 	jmp .enableSDPWrites
 
 .nextByte:
@@ -133,6 +150,8 @@ programEEPROMCode:
 
 .exit:
 	sti
+
+	pop bx
 
 	ret
 
