@@ -369,7 +369,7 @@ drawIDEDevicesParameters:
 	call drawIDEDeviceParameters
 
 	inc dh					; next row
-	add si,IDE_INTERFACES_SIZE		; next IDE Interface
+	add si,IDE_INTERFACES_DEVICE_SIZE	; next IDE Interface
 
 	loop .drawParameters
 
@@ -426,7 +426,7 @@ detectIDEDevicesParameters:
 	call drawIDEDeviceParameters
 
 	inc dh					; next row
-	add si,IDE_INTERFACES_SIZE		; next IDE Interface
+	add si,IDE_INTERFACES_DEVICE_SIZE	; next IDE Interface
 
 	loop .drawParameters
 
@@ -1070,16 +1070,42 @@ deviceInformation:
 	push cx
 	push dx
 
-	; TODO : Identify device if not yet done.
-
-	mov cl,IDE_DEVICE_INFO_VALUE_OFFSET	; starting column
-	call clearDeviceInformation
-
 	sub bl,IDE_DEVICES_REGION_TOP		; infer IDE Device index from bl (row = ID)
 	call calculateIDEDevicesDataOffset
 
-	mov bx,ax				; IDE_DEVICES_DATA offset
-	
+	push ax					; save IDE_DEVICES_DATA offset
+
+	mov si,ax
+	cmp byte [si + IDE_DEVICES_DATA_IDENTIFIED_OFFSET],IDE_DEVICES_DATA_IDENTIFIED
+	jnz .continue
+
+	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
+	call highlightRegion
+
+	push cx
+
+	mov si,IDE_INTERFACES_DEVICE		; first IDE Interface: Primary Master (Device 0)
+	xor ch,ch				; ignore high byte
+	mov cl,bl				; use inferred IDE Device index
+
+.nextIDEInterfacesDevice:
+	add si,IDE_INTERFACES_DEVICE_SIZE	; next IDE Interface
+
+	loop .nextIDEInterfacesDevice
+
+	call identifyIDEDevice
+
+	pop cx
+
+	mov ah,BIOS_SELECTED_COLOR
+	call highlightRegion
+
+.continue:
+	mov cl,IDE_DEVICE_INFO_VALUE_OFFSET	; starting column
+	call clearDeviceInformation
+
+	pop bx					; restore IDE_DEVICES_DATA offset
+
 	mov ah,BIOS_TEXT_COLOR
 
 	mov dh,IDE_DEVICE_INFO_TOP

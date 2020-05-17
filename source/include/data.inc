@@ -120,4 +120,5 @@ section .bss
 	;     Offset: 85 :  1 byte  - general configuration register - high
 	;     Offset: 86 :  1 byte  - general coniguration register - low
 	;     Offset: 87 :  1 byte  - device features register
+	;     Offset: 88 :  1 byte  - 0 = not identified, X = identified
 	IDE_DEVICES_DATA		RESB	IDE_DEVICES_DATA_SIZE * IDE_DEVICES_DATA_DEVICES_COUNT

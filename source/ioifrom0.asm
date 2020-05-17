@@ -54,11 +54,12 @@ section .text
 ; Output:
 ;     none
 ; Affects:
-;     FLAGS
+;     DI
 ; Preserves:
-;     AX, BX, CX, DX, SI, DS, ES
+;     FLAGS, AX, BX, CX, DX, SI, DS, ES
 ; ---------------------------------------------------------------------------
 start:
+	pushf
 	push ax
 	push bx
 	push cx
@@ -121,7 +122,7 @@ start:
 	call autodetectIDEDevice
 
 	add bx,MSG_IDE_DEVICE_LENGTH		; next IDE Device string
-	add si,IDE_INTERFACES_SIZE		; next IDE Interface
+	add si,IDE_INTERFACES_DEVICE_SIZE	; next IDE Interface
 
 	loop .nextIDEDevice
 
@@ -135,6 +136,7 @@ start:
 	pop cx
 	pop bx
 	pop ax
+	popf
 
 %ifdef ROM
 	retf

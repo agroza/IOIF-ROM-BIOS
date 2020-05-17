@@ -306,6 +306,9 @@ identifyIDEDevice:
 	mov ax,[si + ATA_IDENTIFY_DEVICE_FEATURES_OFFSET]
 	mov byte [di + IDE_DEVICES_DATA_FEATURES_OFFSET],ah
 
+.setIdentified:
+	inc byte [di + IDE_DEVICES_DATA_IDENTIFIED_OFFSET]
+
 .fillSerial:
 	add si,ATA_IDENTIFY_DEVICE_SERIAL_OFFSET
 	add di,IDE_DEVICES_DATA_SERIAL_OFFSET

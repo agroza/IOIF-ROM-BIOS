@@ -99,7 +99,7 @@ writeEEPROMData:
 ;     CX - 0 = success, non-zero = fail
 ;     AH - 0 = assume SDP is not present, 1 = assume SDP is present
 ; Affects:
-;     FLAGS, AH, CX, DX, SI, DI
+;     FLAGS, AL, CX, DX, SI, DI
 ; Preserves:
 ;     BX
 ; ---------------------------------------------------------------------------

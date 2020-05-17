@@ -16,7 +16,7 @@ section .text
 ; Output:
 ;     none
 ; Affects:
-;     FLAGS
+;     FLAGS, AH
 ; Preserves:
 ;     BX
 ; ---------------------------------------------------------------------------
