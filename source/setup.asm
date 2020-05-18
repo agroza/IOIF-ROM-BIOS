@@ -207,14 +207,17 @@ calculateDisplayIDEDeviceSize:
 	mov ah,bh
 	call clearIDEDeviceParameterRegion
 
+	es cmp byte[di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_USER
+	jne .setZero
+
 	push bx					; store color attribute
 	push dx					; store row,column
 
-	mov ax,[di + IDE_DEVICES_DATA_HEADS_OFFSET]
-	mov bx,[di + IDE_DEVICES_DATA_SECTORS_OFFSET]
+	es mov ax,[di + IDE_DEVICES_DATA_HEADS_OFFSET]
+	es mov bx,[di + IDE_DEVICES_DATA_SECTORS_OFFSET]
 	mul bx
 	shr ax,1				; divide (H * S ) by 2 (assume 512 bps)
-	mov bx,[di + IDE_DEVICES_DATA_CYLINDERS_OFFSET]
+	es mov bx,[di + IDE_DEVICES_DATA_CYLINDERS_OFFSET]
 	mul bx
 	mov bx,1024				; in Mb
 	div bx
@@ -222,6 +225,12 @@ calculateDisplayIDEDeviceSize:
 	pop dx					; restore row,column
 	pop bx					; restore color attribute
 
+	jmp .writeSize
+
+.setZero:
+	xor ax,ax
+
+.writeSize:
 	call directWriteInteger
 
 	ret
@@ -271,7 +280,7 @@ loadIDEDeviceTypeOffset:
 ;     none
 ; ---------------------------------------------------------------------------
 drawZeroOrValue:
-	cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_USER
+	es cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_USER
 	je .drawValue
 
 	xor ax,ax
@@ -298,9 +307,14 @@ drawIDEDeviceParameters:
 	push dx
 	push si
 
+push es
+
+mov ax,IDE_DEVICES_DATA_SEGMENT
+mov es,ax
+
 	call calculateIDEDevicesDataOffset
 
-	mov di,ax				; IDE_DEVICES_DATA offset
+	es mov di,ax				; IDE_DEVICES_DATA offset
 
 	mov ah,BIOS_TEXT_COLOR
 
@@ -309,29 +323,29 @@ drawIDEDeviceParameters:
 	mov dl,IDE_DEVICE_REGION_TYPE_OFFSET
 	call directWriteChar
 
-	mov byte al,[di + IDE_DEVICES_DATA_TYPE_OFFSET]
+	es mov byte al,[di + IDE_DEVICES_DATA_TYPE_OFFSET]
 	call loadIDEDeviceTypeOffset
 	call directWriteAt
 
 	mov bh,ah				; color attribute for directWriteInteger
 
-	mov ax,[di + IDE_DEVICES_DATA_CYLINDERS_OFFSET]
+	es mov ax,[di + IDE_DEVICES_DATA_CYLINDERS_OFFSET]
 	mov dl,IDE_DEVICE_REGION_CYLINDERS_OFFSET
 	call drawZeroOrValue
 
-	mov ax,[di + IDE_DEVICES_DATA_HEADS_OFFSET]
+	es mov ax,[di + IDE_DEVICES_DATA_HEADS_OFFSET]
 	mov dl,IDE_DEVICE_REGION_HEADS_OFFSET
 	call drawZeroOrValue
 
-	mov ax,[di + IDE_DEVICES_DATA_SECTORS_OFFSET]
+	es mov ax,[di + IDE_DEVICES_DATA_SECTORS_OFFSET]
 	mov dl,IDE_DEVICE_REGION_SECTORS_OFFSET
 	call drawZeroOrValue
 
-	mov ax,[di + IDE_DEVICES_DATA_WPCOMP_OFFSET]
+	es mov ax,[di + IDE_DEVICES_DATA_WPCOMP_OFFSET]
 	mov dl,IDE_DEVICE_REGION_WPCOMP_OFFSET
 	call drawZeroOrValue
 
-	mov ax,[di + IDE_DEVICES_DATA_LDZONE_OFFSET]
+	es mov ax,[di + IDE_DEVICES_DATA_LDZONE_OFFSET]
 	mov dl,IDE_DEVICE_REGION_LDZONE_OFFSET
 	call drawZeroOrValue
 
@@ -342,6 +356,7 @@ drawIDEDeviceParameters:
 	mov si,sIDEDeviceModeCHS
 	call directWriteAt
 
+pop es
 	pop si
 	pop dx
 	pop cx
@@ -363,7 +378,9 @@ drawIDEDevicesParameters:
 	mov dh,IDE_DEVICES_REGION_PRIMARY_MASTER
 	mov si,IDE_INTERFACES_DEVICE		; first IDE Interface: Primary Master (Device 0)
 
-	mov cx,IDE_DEVICES_DATA_DEVICES_COUNT
+	xor ch,ch
+	mov cl,IDE_DEVICES_DATA_DEVICES_COUNT
+
 .drawParameters:
 	mov bl,[si + IDE_INTERFACE_DEVICE + 1]	; get device ID
 	call drawIDEDeviceParameters
@@ -416,7 +433,9 @@ detectIDEDevicesParameters:
 	mov dh,IDE_DEVICES_REGION_PRIMARY_MASTER
 	mov si,IDE_INTERFACES_DEVICE		; first IDE Interface: Primary Master (Device 0)
 
-	mov cx,IDE_DEVICES_DATA_DEVICES_COUNT
+	xor ch,ch
+	mov cl,IDE_DEVICES_DATA_DEVICES_COUNT
+
 .drawParameters:
 	call highlightDetection
 
@@ -502,11 +521,16 @@ editIDEDeviceNumericParameter:
 	push dx
 	push si
 
+push es
+
+mov ax,IDE_DEVICES_DATA_SEGMENT
+mov es,ax
+
 	call loadIDEDeviceDataOffset		; input: bh; output: ax
 
-	mov si,ax				; IDE_DEVICES_DATA offset
+	es mov si,ax				; IDE_DEVICES_DATA offset
 
-	cmp byte [si + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_USER
+	es cmp byte [si + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_USER
 	jne .abort
 
 	push si					; later on will be popped as di
@@ -639,14 +663,14 @@ editIDEDeviceNumericParameter:
 	mov ax,[di + IDE_PARAMETER_RESTRICTION_MAX_OFFSET]
 
 .updateValue:
-	mov [si],ax
+	es mov [si],ax
 
 	sub dl,bl				; set to input start column
 
 	jmp .exit
 
 .exitNoSave:
-	mov ax,[si]				; original IDE Device Parameter value
+	es mov ax,[si]				; original IDE Device Parameter value
 	mov dx,[bp - 8]				; original row,column
 
 	inc dl					; set to input start column
@@ -662,6 +686,7 @@ editIDEDeviceNumericParameter:
 	call calculateDisplayIDEDeviceSize
 
 .abort:
+pop es
 	pop si
 	pop dx
 	pop cx
@@ -724,14 +749,19 @@ editIDEDeviceTextParameter:
 	push dx
 	push si
 
+push es
+
+mov ax,IDE_DEVICES_DATA_SEGMENT
+mov es,ax
+
 	or bl,bl				; is the TYPE parameter focused?
 	jnz .exit
 
 	call loadIDEDeviceDataOffset		; input: bh; output: ax
 
-	mov di,ax				; IDE_DEVICES_DATA offset
+	es mov di,ax				; IDE_DEVICES_DATA offset
 
-	mov byte al,[di + IDE_DEVICES_DATA_TYPE_OFFSET]
+	es mov byte al,[di + IDE_DEVICES_DATA_TYPE_OFFSET]
 	mov byte [bp - 2],al			; store current IDE Device Type
 
 	call loadIDEDeviceTypeOffset		; input: al; output: si
@@ -758,18 +788,18 @@ editIDEDeviceTextParameter:
 	jmp .editParameterLoop
 
 .modifyPageUp:
-	cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_AUTO
+	es cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_AUTO
 	je .editParameterLoop
-	dec byte [di + IDE_DEVICES_DATA_TYPE_OFFSET]
+	es dec byte [di + IDE_DEVICES_DATA_TYPE_OFFSET]
 
 	sub si,MSG_IDE_DEVICE_TYPE_LENGTH	; previous IDE Device Type string
 
 	jmp .writeParameter
 
 .modifyPageDown:
-	cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_NONE
+	es cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_NONE
 	je .editParameterLoop
-	inc byte [di + IDE_DEVICES_DATA_TYPE_OFFSET]
+	es inc byte [di + IDE_DEVICES_DATA_TYPE_OFFSET]
 
 	add si,MSG_IDE_DEVICE_TYPE_LENGTH	; next IDE Device Type string
 
@@ -780,13 +810,14 @@ editIDEDeviceTextParameter:
 
 .exitNoSave:
 	mov al,[bp - 2]				; restore initial IDE Device Type
-	mov byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],al
+	es mov byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],al
 	mov si,[bp - 4]				; restore initial IDE Device Type string offset
 
 .exitSave:
 	call drawIDEDeviceParametersHighlightType
 
 .exit:
+pop es
 	pop si
 	pop dx
 	pop bx
@@ -1044,10 +1075,9 @@ clearDeviceInformation:
 ;     none
 ; ---------------------------------------------------------------------------
 writeStringOrNA:
-	cmp byte [si],0
-	jne .writeString
+	es cmp byte [si],0
+	jnz .writeString
 
-.writeNA:
 	mov si,sIDEDeviceNA
 
 .writeString:
@@ -1070,13 +1100,18 @@ deviceInformation:
 	push cx
 	push dx
 
+push es
+
+mov ax,IDE_DEVICES_DATA_SEGMENT
+mov es,ax
+
 	sub bl,IDE_DEVICES_REGION_TOP		; infer IDE Device index from bl (row = ID)
 	call calculateIDEDevicesDataOffset
 
 	push ax					; save IDE_DEVICES_DATA offset
 
-	mov si,ax
-	cmp byte [si + IDE_DEVICES_DATA_IDENTIFIED_OFFSET],IDE_DEVICES_DATA_IDENTIFIED
+	es mov si,ax
+	es cmp byte [si + IDE_DEVICES_DATA_IDENTIFIED_OFFSET],IDE_DEVICES_DATA_IDENTIFIED
 	jnz .continue
 
 	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
@@ -1110,18 +1145,19 @@ deviceInformation:
 
 	mov dh,IDE_DEVICE_INFO_TOP
 	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
-	mov si,bx
-	add si,IDE_DEVICES_DATA_MODEL_OFFSET
+
+	es mov si,bx
+	es add si,IDE_DEVICES_DATA_MODEL_OFFSET
 	call writeStringOrNA
 
 	inc dh					; row
-	mov si,bx
-	add si,IDE_DEVICES_DATA_SERIAL_OFFSET
+	es mov si,bx
+	es add si,IDE_DEVICES_DATA_SERIAL_OFFSET
 	call writeStringOrNA
 
 	inc dh					; row
-	mov si,bx
-	add si,IDE_DEVICES_DATA_REVISION_OFFSET
+	es mov si,bx
+	es add si,IDE_DEVICES_DATA_REVISION_OFFSET
 	call writeStringOrNA
 
 	inc dh					; row
@@ -1133,9 +1169,9 @@ deviceInformation:
 	call directWriteAt
 
 .highlight:
-	mov si,bx				; IDE_DEVICES_DATA offset
+	es mov si,bx				; IDE_DEVICES_DATA offset
 
-	cmp byte [si + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_NONE
+	es cmp byte [si + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_NONE
 	je .exit
 
 	xor bx,bx				; extra condition is false
@@ -1143,7 +1179,8 @@ deviceInformation:
 	dec dh					; move to General row
 
 .highlightType:
-	mov ah,[si + IDE_DEVICES_DATA_GENERAL_HIGH_OFFSET]
+	es mov ah,[si + IDE_DEVICES_DATA_GENERAL_HIGH_OFFSET]
+
 	mov al,ATA_ID_DEV_GENERAL_FIXED_FLAG
 	mov dl,IDE_DEVICE_GENERAL_FIXED_OFFSET
 	mov cx,IDE_DEVICE_GENERAL_FIXED_LENGTH
@@ -1154,7 +1191,7 @@ deviceInformation:
 	mov cx,IDE_DEVICE_GENERAL_REMOVABLE_LENGTH
 	call highlightFeature
 
-	mov ah,[si + IDE_DEVICES_DATA_GENERAL_LOW_OFFSET]
+	es mov ah,[si + IDE_DEVICES_DATA_GENERAL_LOW_OFFSET]
 
 	mov al,ATA_ID_DEV_GENERAL_NON_MAGNETIC_FLAG
 	add dl,IDE_DEVICE_GENERAL_NON_MAGNETIC_OFFSET
@@ -1164,7 +1201,7 @@ deviceInformation:
 .highlightFeatures:
 	inc dh					; move to Features row
 
-	mov ah,[si + IDE_DEVICES_DATA_FEATURES_OFFSET]
+	es mov ah,[si + IDE_DEVICES_DATA_FEATURES_OFFSET]
 
 	mov al,ATA_ID_DEV_FEATURE_LBA_FLAG
 	mov dl,IDE_DEVICE_FEATURE_LBA_OFFSET
@@ -1182,7 +1219,7 @@ deviceInformation:
 	push bx
 
 	mov al,ATA_ID_DEV_FEATURE_IORDY_FLAG
-	mov bl,[si + IDE_DEVICES_DATA_TYPE_OFFSET]
+	es mov bl,[si + IDE_DEVICES_DATA_TYPE_OFFSET]
 	add dl,IDE_DEVICE_FEATURE_IORDY_OFFSET
 	mov cx,IDE_DEVICE_FEATURE_IORDY_LENGTH
 	call highlightFeature
@@ -1195,6 +1232,7 @@ deviceInformation:
 	call highlightFeature
 
 .exit:
+pop es
 	pop dx
 	pop cx
 	pop bx
@@ -1358,7 +1396,11 @@ viewIDEDevicesInformation:
 ;     none
 ; ---------------------------------------------------------------------------
 enterSetup:
-	mov ah,00h				; set video mode
+	mov ax,1202h				; select vertical resolution, 400 scan lines
+	mov bl,30h				; so that the 80 x 25 "resolution" is correctly displayed
+	int 10h					; on any EPA Energy Star logo BIOS that might alter scan lines
+
+	mov ax,00h				; set video mode
 	mov al,03h				; 80 x 25, 16 colors
 	int 10h
 

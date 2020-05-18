@@ -424,6 +424,7 @@ delay:
 	cmp ax,bx				; same timer count?
 	je .nextUpdate
 	mov bx,ax				; store the new compare value
+
 	loop .nextUpdate
 
 	pop ds

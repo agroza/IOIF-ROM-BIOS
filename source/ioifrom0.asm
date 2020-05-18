@@ -65,8 +65,11 @@ start:
 	push cx
 	push dx
 	push si
+	push di
 	push ds
 	push es
+	push bp
+	push sp
 
 	xor ax,ax
 	mov ss,ax
@@ -75,6 +78,8 @@ start:
 	mov es,ax				; ES:DI = CS:DI for entire program
 
 	call clearIDEDevicesData
+
+	call CRLF
 
 	mov ah,HIGHLIGHT_TEXT_COLOR
 	mov si,sProgram
@@ -129,8 +134,11 @@ start:
 .exit:
 	call CRLF
 
+	pop sp
+	pop bp
 	pop es
 	pop ds
+	pop di
 	pop si
 	pop dx
 	pop cx

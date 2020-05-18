@@ -57,13 +57,20 @@ check8bitCPU:
 ;     none
 ; ---------------------------------------------------------------------------
 clearIDEDevicesData:
-	mov di,IDE_DEVICES_DATA
+push es
+
+mov ax,IDE_DEVICES_DATA_SEGMENT
+mov es,ax
+
+	es mov di,IDE_DEVICES_DATA
 	xor ax,ax
 	mov cx,IDE_DEVICES_DATA_SIZE * IDE_DEVICES_DATA_DEVICES_COUNT
 
 	cld
 
 	rep stosb
+
+pop es
 
 	ret
 
@@ -167,6 +174,10 @@ identifyIDEDevice:
 	push si
 	push di
 	push ds
+push es
+
+mov ax,IDE_DEVICES_DATA_SEGMENT
+mov es,ax
 
 	xor ax,ax
 	mov ds,ax				; DS:SI = 0000h:SI
@@ -253,7 +264,7 @@ identifyIDEDevice:
 	add dx,DATA_REGISTER
 
 .fillATAIdentifyDeviceData:
-	mov di,ATA_IDENTIFY_DEVICE_DATA
+	es mov di,ATA_IDENTIFY_DEVICE_DATA
 	mov cx,256
 
 	rep insw				; fill the buffer with device data
@@ -263,61 +274,61 @@ identifyIDEDevice:
 	jmp .processATAIdentifyDeviceData
 
 .clearATAIdentifyDeviceData:
-	mov di,ATA_IDENTIFY_DEVICE_DATA
+	es mov di,ATA_IDENTIFY_DEVICE_DATA
 	mov ax,00h
 	mov cx,256
 
 	rep stosw				; fill the buffer with device data
 
 .processATAIdentifyDeviceData:
-	pop ds					; DS:SI = CS:SI
+;	pop ds					; DS:SI = CS:SI
 
 	mov bl,[bp - 5]				; IDE Device ID
 	call calculateIDEDevicesDataOffset
 
-	mov si,ATA_IDENTIFY_DEVICE_DATA
-	mov di,ax
+	es mov si,ATA_IDENTIFY_DEVICE_DATA
+	es mov di,ax
 
 .copyParameters:
-	mov ax,[si + ATA_IDENTIFY_DEVICE_CYLINDERS_OFFSET]
-	mov word [di + IDE_DEVICES_DATA_CYLINDERS_OFFSET],ax
-	mov word [di + IDE_DEVICES_DATA_LDZONE_OFFSET],ax
+	es mov ax,[si + ATA_IDENTIFY_DEVICE_CYLINDERS_OFFSET]
+	es mov word [di + IDE_DEVICES_DATA_CYLINDERS_OFFSET],ax
+	es mov word [di + IDE_DEVICES_DATA_LDZONE_OFFSET],ax
 
-	mov ax,[si + ATA_IDENTIFY_DEVICE_HEADS_OFFSET]
-	mov word [di + IDE_DEVICES_DATA_HEADS_OFFSET],ax
+	es mov ax,[si + ATA_IDENTIFY_DEVICE_HEADS_OFFSET]
+	es mov word [di + IDE_DEVICES_DATA_HEADS_OFFSET],ax
 
-	mov ax,[si + ATA_IDENTIFY_DEVICE_SECTORS_OFFSET]
-	mov word [di + IDE_DEVICES_DATA_SECTORS_OFFSET],ax
+	es mov ax,[si + ATA_IDENTIFY_DEVICE_SECTORS_OFFSET]
+	es mov word [di + IDE_DEVICES_DATA_SECTORS_OFFSET],ax
 
 	or ax,ax				; no sectors?
 	jnz .copyWPCOMP
-	mov byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_NONE
-	mov word [di + IDE_DEVICES_DATA_WPCOMP_OFFSET],ax
+	es mov byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_NONE
+	es mov word [di + IDE_DEVICES_DATA_WPCOMP_OFFSET],ax
 	jmp .copyGeneralAndFeatures
 
 .copyWPCOMP:
-	mov byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_USER
-	mov word [di + IDE_DEVICES_DATA_WPCOMP_OFFSET],IDE_PARAMETER_CHS_WPCOMP_MAX
+	es mov byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_USER
+	es mov word [di + IDE_DEVICES_DATA_WPCOMP_OFFSET],IDE_PARAMETER_CHS_WPCOMP_MAX
 
 .copyGeneralAndFeatures:
-	mov ax,[si + ATA_IDENTIFY_DEVICE_GENERAL_OFFSET]
-	mov word [di + IDE_DEVICES_DATA_GENERAL_HIGH_OFFSET],ax
+	es mov ax,[si + ATA_IDENTIFY_DEVICE_GENERAL_OFFSET]
+	es mov word [di + IDE_DEVICES_DATA_GENERAL_HIGH_OFFSET],ax
 
-	mov ax,[si + ATA_IDENTIFY_DEVICE_FEATURES_OFFSET]
-	mov byte [di + IDE_DEVICES_DATA_FEATURES_OFFSET],ah
+	es mov ax,[si + ATA_IDENTIFY_DEVICE_FEATURES_OFFSET]
+	es mov byte [di + IDE_DEVICES_DATA_FEATURES_OFFSET],ah
 
 .setIdentified:
-	inc byte [di + IDE_DEVICES_DATA_IDENTIFIED_OFFSET]
+	es inc byte [di + IDE_DEVICES_DATA_IDENTIFIED_OFFSET]
 
 .fillSerial:
-	add si,ATA_IDENTIFY_DEVICE_SERIAL_OFFSET
-	add di,IDE_DEVICES_DATA_SERIAL_OFFSET
+	es add si,ATA_IDENTIFY_DEVICE_SERIAL_OFFSET
+	es add di,IDE_DEVICES_DATA_SERIAL_OFFSET
 
 	mov cx,IDE_DEVICES_DATA_SERIAL_LENGTH	; read 20 characters (10 words)
 	call copyWordsExchangeBytes
 
 .fillRevision:
-	add si,ATA_IDENTIFY_DEVICE_REVISION_OFFSET - ATA_IDENTIFY_DEVICE_SERIAL_OFFSET - 2 * IDE_DEVICES_DATA_SERIAL_LENGTH
+	es add si,ATA_IDENTIFY_DEVICE_REVISION_OFFSET - ATA_IDENTIFY_DEVICE_SERIAL_OFFSET - 2 * IDE_DEVICES_DATA_SERIAL_LENGTH
 
 	mov cx,IDE_DEVICES_DATA_REVISION_LENGTH	; read 8 characters (4 words)
 	call copyWordsExchangeBytes
@@ -326,6 +337,8 @@ identifyIDEDevice:
 	mov cx,IDE_DEVICES_DATA_MODEL_LENGTH	; read 40 characters (20 words)
 	call copyWordsExchangeBytes
 
+pop es
+	pop ds
 	pop di
 	pop si
 	pop dx

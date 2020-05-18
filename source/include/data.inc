@@ -104,6 +104,7 @@ section .bss
 
 	ATA_IDENTIFY_DEVICE_DATA	RESW	256
 
+	; IDE_DEVICES_DATA is loaded at segment described by IDE_DEVICES_DATA_SEGMENT equate.
 	; IDE_DEVICES_DATA is a 4 row memory storage R/W matrix, each row being structured as:
 	;     Offset:  0 :  1 word  - cylinders
 	;     Offset:  2 :  1 word  - heads
