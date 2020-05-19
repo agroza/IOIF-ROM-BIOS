@@ -261,7 +261,7 @@ directWrite:
 	jmp .nextByte
 
 .CR:
-	mov dl,0				; first column
+	xor dl,dl				; first column
 	call moveCursor
 
 	jmp .computePosition

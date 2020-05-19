@@ -536,7 +536,7 @@ editIDEDeviceNumericParameter:
 
 	xor bl,bl				; decimal digit counter
 
-	mov word [bp - 2],0			; start with input value 0
+	mov word [bp - 2],0000h			; start with input value 0
 
 .editParameterLoop:
 	mov ah,01h				; read the state of the keyboard buffer
@@ -1066,12 +1066,8 @@ writeStringOrNA:
 	jmp .writeString
 
 .writeStringAtSegment:
-	push ax
-
-	mov ax,IDE_DEVICES_DATA_SEGMENT
-	mov ds,ax
-
-	pop ax
+	push es
+	pop ds
 
 .writeString:
 	call directWriteAt
@@ -1389,7 +1385,7 @@ enterSetup:
 	mov bl,30h				; so that the 80 x 25 "resolution" is correctly displayed
 	int 10h					; on any EPA Energy Star logo BIOS that might alter scan lines
 
-	mov ax,00h				; set video mode
+	mov ah,00h				; set video mode
 	mov al,03h				; 80 x 25, 16 colors
 	int 10h
 

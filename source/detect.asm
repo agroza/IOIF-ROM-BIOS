@@ -264,7 +264,7 @@ identifyIDEDevice:
 
 .clearATAIdentifyDeviceData:
 	mov di,ATA_IDENTIFY_DEVICE_DATA
-	mov ax,00h
+	xor ax,ax
 	mov cx,256
 
 	rep stosw				; fill the buffer with device data
@@ -347,14 +347,13 @@ identifyIDEDevice:
 ; Affects:
 ;     FLAGS, AX
 ; Preserves:
-;     BX, CX, SI
+;     BX, CX, SI, DS
 ; ---------------------------------------------------------------------------
 autodetectIDEDevice:
 	push bx
 	push cx
 	push si
-
-push ds
+	push ds
 
 	call calculateIDEDevicesStoredDataOffset
 	mov di,ax
@@ -384,27 +383,22 @@ push ds
 
 	add si,IDE_DEVICES_DATA_MODEL_OFFSET
 	es cmp byte [si],00h
-	jz .detectNone
+	jnz .writeStringAtSegment
 
-	push ax
-
-	mov ax,IDE_DEVICES_DATA_SEGMENT
-	mov ds,ax
-
-	pop ax
-
-	jmp .writeModel
-
-.detectNone:
 	mov si,sIDEDeviceTypeNone
+	jmp .writeString
 
-.writeModel:
+.writeStringAtSegment:
+	push es
+	pop ds
+
+.writeString:
 	call directWrite
 
 	call CRLF
 
 .exit:
-pop ds
+	pop ds
 	pop si
 	pop cx
 	pop bx

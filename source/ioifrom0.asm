@@ -35,7 +35,7 @@ section .text
 %endif
 	jmp start
 
-	DB 0,'I/O-IF ROM #0',0
+	DB 00h,'I/O-IF ROM #0',00h
 
 ;%include ".\source\debug\debug.asm"
 %include ".\source\routines.asm"
@@ -75,8 +75,12 @@ start:
 	mov ss,ax
 	mov ax,cs
 	mov ds,ax				; DS:SI = CS:SI for entire program
+%ifdef ROM
 	mov ax,IDE_DEVICES_DATA_SEGMENT
 	mov es,ax				; ES:DI = IDE_DEVICES_DATA_SEGMENT:DI for entire program
+%else
+	mov es,ax				; ES:DI = CS:DI for entire program
+%endif
 
 	call clearIDEDevicesData
 
