@@ -11,7 +11,6 @@
 ;%define DOS
 
 ;%define USETESTDATA
-%define EEPROMWRITE
 
 	use16
 	cpu 286
@@ -44,7 +43,6 @@ section .text
 %include ".\source\detect.asm"
 %include ".\source\setup.asm"
 ;%include ".\source\interrupts.asm"
-
 %include ".\source\include\data.inc"
 %include ".\source\include\messages.inc"
 
@@ -76,12 +74,11 @@ start:
 	mov ax,cs
 	mov ds,ax				; DS:SI = CS:SI for entire program
 %ifdef ROM
-	mov ax,IDE_DEVICES_DATA_SEGMENT
-	mov es,ax				; ES:DI = IDE_DEVICES_DATA_SEGMENT:DI for entire program
+	push IDE_DEVICES_DATA_SEGMENT
+	pop es					; ES:DI = IDE_DEVICES_DATA_SEGMENT:DI for entire program
 %else
 	mov es,ax				; ES:DI = CS:DI for entire program
 %endif
-
 	call clearIDEDevicesData
 
 	call CRLF

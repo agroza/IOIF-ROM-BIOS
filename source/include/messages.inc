@@ -9,7 +9,7 @@
 
 section .text
 
-sProgram			DB 'I/O Interface ROM BIOS  VER 0.2 REV. A',13,10,0
+sProgram			DB 'I/O Interface ROM BIOS  VER 0.2 REV. C',13,10,0
 sCopyright			DB 'Copyright (C) 2020 Microprogramming TECHNIQUES',13,10,10,0
 sBIOSDisabled			DB '16-bit CPU required. ROM BIOS disabled.',13,10,0
 sPressDELKey			DB 'Press DEL to enter I/OIF SETUP...',13,10,10,0

@@ -696,21 +696,12 @@ editIDEDeviceNumericParameter:
 ;     BX, CX
 ; ---------------------------------------------------------------------------
 drawIDEDeviceParametersHighlightType:
-	push cx
-
 	call drawIDEDeviceParameters
 
 	mov ah,BIOS_SELECTED_HIGHLIGHT_COLOR
 	mov dl,IDE_DEVICE_REGION_TYPE_OFFSET - 1
 
-	mov al,20h				; empty space
-	mov cx,IDE_DEVICE_REGION_TYPE_LENGTH
-	call directWriteChar
-
-	inc dl					; column
-	call directWriteAt			; IDE Device Type string
-
-	pop cx
+	call highlightRegion
 
 	ret
 

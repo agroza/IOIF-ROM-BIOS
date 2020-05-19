@@ -102,6 +102,7 @@ section .text
 
 section .bss
 
+	; 512-byte memory buffer used to store the ATA Identify Command results.
 	ATA_IDENTIFY_DEVICE_DATA	RESW	256
 
 	; IDE_DEVICES_DATA is loaded at segment described by IDE_DEVICES_DATA_SEGMENT equate.
@@ -123,3 +124,7 @@ section .bss
 	;     Offset: 87 :  1 byte  - device features register
 	;     Offset: 88 :  1 byte  - 0 = not identified, X = identified
 	IDE_DEVICES_DATA		RESB	IDE_DEVICES_DATA_SIZE * IDE_DEVICES_DATA_DEVICES_COUNT
+
+	; Temporarily store the calculated Option ROM 8-bit checksum. It will be written to the EEPROM
+	; once every IDE Devices parameters are stored.
+	OPTION_ROM_CHECKSUM		RESB	1
