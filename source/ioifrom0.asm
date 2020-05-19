@@ -10,7 +10,7 @@
 %define ROM
 ;%define DOS
 
-%define USETESTDATA
+;%define USETESTDATA
 %define EEPROMWRITE
 
 	use16
@@ -75,7 +75,8 @@ start:
 	mov ss,ax
 	mov ax,cs
 	mov ds,ax				; DS:SI = CS:SI for entire program
-	mov es,ax				; ES:DI = CS:DI for entire program
+	mov ax,IDE_DEVICES_DATA_SEGMENT
+	mov es,ax				; ES:DI = IDE_DEVICES_DATA_SEGMENT:DI for entire program
 
 	call clearIDEDevicesData
 

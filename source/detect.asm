@@ -57,20 +57,13 @@ check8bitCPU:
 ;     none
 ; ---------------------------------------------------------------------------
 clearIDEDevicesData:
-push es
-
-mov ax,IDE_DEVICES_DATA_SEGMENT
-mov es,ax
-
-	es mov di,IDE_DEVICES_DATA
+	mov di,IDE_DEVICES_DATA
 	xor ax,ax
 	mov cx,IDE_DEVICES_DATA_SIZE * IDE_DEVICES_DATA_DEVICES_COUNT
 
 	cld
 
 	rep stosb
-
-pop es
 
 	ret
 
@@ -174,10 +167,6 @@ identifyIDEDevice:
 	push si
 	push di
 	push ds
-push es
-
-mov ax,IDE_DEVICES_DATA_SEGMENT
-mov es,ax
 
 	xor ax,ax
 	mov ds,ax				; DS:SI = 0000h:SI
@@ -264,7 +253,7 @@ mov es,ax
 	add dx,DATA_REGISTER
 
 .fillATAIdentifyDeviceData:
-	es mov di,ATA_IDENTIFY_DEVICE_DATA
+	mov di,ATA_IDENTIFY_DEVICE_DATA
 	mov cx,256
 
 	rep insw				; fill the buffer with device data
@@ -274,30 +263,31 @@ mov es,ax
 	jmp .processATAIdentifyDeviceData
 
 .clearATAIdentifyDeviceData:
-	es mov di,ATA_IDENTIFY_DEVICE_DATA
+	mov di,ATA_IDENTIFY_DEVICE_DATA
 	mov ax,00h
 	mov cx,256
 
 	rep stosw				; fill the buffer with device data
 
 .processATAIdentifyDeviceData:
-;	pop ds					; DS:SI = CS:SI
-
 	mov bl,[bp - 5]				; IDE Device ID
 	call calculateIDEDevicesDataOffset
 
-	es mov si,ATA_IDENTIFY_DEVICE_DATA
-	es mov di,ax
+	mov si,ATA_IDENTIFY_DEVICE_DATA
+	mov di,ax
 
 .copyParameters:
-	es mov ax,[si + ATA_IDENTIFY_DEVICE_CYLINDERS_OFFSET]
+	push es
+	pop ds					; DS:SI = ES:SI
+
+	ds mov ax,[si + ATA_IDENTIFY_DEVICE_CYLINDERS_OFFSET]
 	es mov word [di + IDE_DEVICES_DATA_CYLINDERS_OFFSET],ax
 	es mov word [di + IDE_DEVICES_DATA_LDZONE_OFFSET],ax
 
-	es mov ax,[si + ATA_IDENTIFY_DEVICE_HEADS_OFFSET]
+	ds mov ax,[si + ATA_IDENTIFY_DEVICE_HEADS_OFFSET]
 	es mov word [di + IDE_DEVICES_DATA_HEADS_OFFSET],ax
 
-	es mov ax,[si + ATA_IDENTIFY_DEVICE_SECTORS_OFFSET]
+	ds mov ax,[si + ATA_IDENTIFY_DEVICE_SECTORS_OFFSET]
 	es mov word [di + IDE_DEVICES_DATA_SECTORS_OFFSET],ax
 
 	or ax,ax				; no sectors?
@@ -311,24 +301,24 @@ mov es,ax
 	es mov word [di + IDE_DEVICES_DATA_WPCOMP_OFFSET],IDE_PARAMETER_CHS_WPCOMP_MAX
 
 .copyGeneralAndFeatures:
-	es mov ax,[si + ATA_IDENTIFY_DEVICE_GENERAL_OFFSET]
+	ds mov ax,[si + ATA_IDENTIFY_DEVICE_GENERAL_OFFSET]
 	es mov word [di + IDE_DEVICES_DATA_GENERAL_HIGH_OFFSET],ax
 
-	es mov ax,[si + ATA_IDENTIFY_DEVICE_FEATURES_OFFSET]
+	ds mov ax,[si + ATA_IDENTIFY_DEVICE_FEATURES_OFFSET]
 	es mov byte [di + IDE_DEVICES_DATA_FEATURES_OFFSET],ah
 
 .setIdentified:
 	es inc byte [di + IDE_DEVICES_DATA_IDENTIFIED_OFFSET]
 
 .fillSerial:
-	es add si,ATA_IDENTIFY_DEVICE_SERIAL_OFFSET
-	es add di,IDE_DEVICES_DATA_SERIAL_OFFSET
+	add si,ATA_IDENTIFY_DEVICE_SERIAL_OFFSET
+	add di,IDE_DEVICES_DATA_SERIAL_OFFSET
 
 	mov cx,IDE_DEVICES_DATA_SERIAL_LENGTH	; read 20 characters (10 words)
 	call copyWordsExchangeBytes
 
 .fillRevision:
-	es add si,ATA_IDENTIFY_DEVICE_REVISION_OFFSET - ATA_IDENTIFY_DEVICE_SERIAL_OFFSET - 2 * IDE_DEVICES_DATA_SERIAL_LENGTH
+	add si,ATA_IDENTIFY_DEVICE_REVISION_OFFSET - ATA_IDENTIFY_DEVICE_SERIAL_OFFSET - 2 * IDE_DEVICES_DATA_SERIAL_LENGTH
 
 	mov cx,IDE_DEVICES_DATA_REVISION_LENGTH	; read 8 characters (4 words)
 	call copyWordsExchangeBytes
@@ -337,7 +327,6 @@ mov es,ax
 	mov cx,IDE_DEVICES_DATA_MODEL_LENGTH	; read 40 characters (20 words)
 	call copyWordsExchangeBytes
 
-pop es
 	pop ds
 	pop di
 	pop si
@@ -365,6 +354,8 @@ autodetectIDEDevice:
 	push cx
 	push si
 
+push ds
+
 	call calculateIDEDevicesStoredDataOffset
 	mov di,ax
 	cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_AUTO
@@ -390,9 +381,17 @@ autodetectIDEDevice:
 	pop si					; restore IDE_DEVICES_DATA offset
 
 	mov ah,HIGHLIGHT_TEXT_COLOR
+
 	add si,IDE_DEVICES_DATA_MODEL_OFFSET
-	cmp byte [si],0
-	je .detectNone
+	es cmp byte [si],00h
+	jz .detectNone
+
+	push ax
+
+	mov ax,IDE_DEVICES_DATA_SEGMENT
+	mov ds,ax
+
+	pop ax
 
 	jmp .writeModel
 
@@ -405,6 +404,7 @@ autodetectIDEDevice:
 	call CRLF
 
 .exit:
+pop ds
 	pop si
 	pop cx
 	pop bx

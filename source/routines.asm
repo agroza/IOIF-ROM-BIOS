@@ -217,7 +217,7 @@ directWriteChar:
 ; Affects:
 ;     FLAGS
 ; Preserves:
-;     AX, BX, CX, SI, DI, ES
+;     AX, BX, CX, DI, ES
 ; ---------------------------------------------------------------------------
 directWrite:
 	push bp
@@ -226,7 +226,6 @@ directWrite:
 	push ax
 	push bx
 	push cx
-	push si
 	push di
 	push es
 
@@ -302,7 +301,6 @@ directWrite:
 
 	pop es
 	pop di
-	pop si
 	pop cx
 	pop bx
 	pop ax
@@ -329,8 +327,11 @@ directWriteAt:
 	push dx
 
 	push ax
+
 	call moveCursor
+
 	pop ax
+
 	call directWrite
 
 	pop dx

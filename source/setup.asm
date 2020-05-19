@@ -307,14 +307,9 @@ drawIDEDeviceParameters:
 	push dx
 	push si
 
-push es
-
-mov ax,IDE_DEVICES_DATA_SEGMENT
-mov es,ax
-
 	call calculateIDEDevicesDataOffset
 
-	es mov di,ax				; IDE_DEVICES_DATA offset
+	mov di,ax				; IDE_DEVICES_DATA offset
 
 	mov ah,BIOS_TEXT_COLOR
 
@@ -356,7 +351,6 @@ mov es,ax
 	mov si,sIDEDeviceModeCHS
 	call directWriteAt
 
-pop es
 	pop si
 	pop dx
 	pop cx
@@ -521,14 +515,9 @@ editIDEDeviceNumericParameter:
 	push dx
 	push si
 
-push es
-
-mov ax,IDE_DEVICES_DATA_SEGMENT
-mov es,ax
-
 	call loadIDEDeviceDataOffset		; input: bh; output: ax
 
-	es mov si,ax				; IDE_DEVICES_DATA offset
+	mov si,ax				; IDE_DEVICES_DATA offset
 
 	es cmp byte [si + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_USER
 	jne .abort
@@ -686,7 +675,6 @@ mov es,ax
 	call calculateDisplayIDEDeviceSize
 
 .abort:
-pop es
 	pop si
 	pop dx
 	pop cx
@@ -749,17 +737,12 @@ editIDEDeviceTextParameter:
 	push dx
 	push si
 
-push es
-
-mov ax,IDE_DEVICES_DATA_SEGMENT
-mov es,ax
-
 	or bl,bl				; is the TYPE parameter focused?
 	jnz .exit
 
 	call loadIDEDeviceDataOffset		; input: bh; output: ax
 
-	es mov di,ax				; IDE_DEVICES_DATA offset
+	mov di,ax				; IDE_DEVICES_DATA offset
 
 	es mov byte al,[di + IDE_DEVICES_DATA_TYPE_OFFSET]
 	mov byte [bp - 2],al			; store current IDE Device Type
@@ -817,7 +800,6 @@ mov es,ax
 	call drawIDEDeviceParametersHighlightType
 
 .exit:
-pop es
 	pop si
 	pop dx
 	pop bx
@@ -1070,18 +1052,31 @@ clearDeviceInformation:
 ; Output:
 ;     none
 ; Affects:
-;     FLAGS, SI 
+;     FLAGS, SI
 ; Preserves:
-;     none
+;     DS
 ; ---------------------------------------------------------------------------
 writeStringOrNA:
-	es cmp byte [si],0
-	jnz .writeString
+	push ds
+
+	es cmp byte [si],00h
+	jnz .writeStringAtSegment
 
 	mov si,sIDEDeviceNA
+	jmp .writeString
+
+.writeStringAtSegment:
+	push ax
+
+	mov ax,IDE_DEVICES_DATA_SEGMENT
+	mov ds,ax
+
+	pop ax
 
 .writeString:
 	call directWriteAt
+
+	pop ds
 
 	ret
 
@@ -1100,17 +1095,12 @@ deviceInformation:
 	push cx
 	push dx
 
-push es
-
-mov ax,IDE_DEVICES_DATA_SEGMENT
-mov es,ax
-
 	sub bl,IDE_DEVICES_REGION_TOP		; infer IDE Device index from bl (row = ID)
 	call calculateIDEDevicesDataOffset
 
 	push ax					; save IDE_DEVICES_DATA offset
 
-	es mov si,ax
+	mov si,ax
 	es cmp byte [si + IDE_DEVICES_DATA_IDENTIFIED_OFFSET],IDE_DEVICES_DATA_IDENTIFIED
 	jnz .continue
 
@@ -1146,18 +1136,18 @@ mov es,ax
 	mov dh,IDE_DEVICE_INFO_TOP
 	mov dl,IDE_DEVICE_INFO_VALUE_OFFSET
 
-	es mov si,bx
-	es add si,IDE_DEVICES_DATA_MODEL_OFFSET
+	mov si,bx
+	add si,IDE_DEVICES_DATA_MODEL_OFFSET
 	call writeStringOrNA
 
 	inc dh					; row
-	es mov si,bx
-	es add si,IDE_DEVICES_DATA_SERIAL_OFFSET
+	mov si,bx
+	add si,IDE_DEVICES_DATA_SERIAL_OFFSET
 	call writeStringOrNA
 
 	inc dh					; row
-	es mov si,bx
-	es add si,IDE_DEVICES_DATA_REVISION_OFFSET
+	mov si,bx
+	add si,IDE_DEVICES_DATA_REVISION_OFFSET
 	call writeStringOrNA
 
 	inc dh					; row
@@ -1169,7 +1159,7 @@ mov es,ax
 	call directWriteAt
 
 .highlight:
-	es mov si,bx				; IDE_DEVICES_DATA offset
+	mov si,bx				; IDE_DEVICES_DATA offset
 
 	es cmp byte [si + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_NONE
 	je .exit
@@ -1232,7 +1222,6 @@ mov es,ax
 	call highlightFeature
 
 .exit:
-pop es
 	pop dx
 	pop cx
 	pop bx

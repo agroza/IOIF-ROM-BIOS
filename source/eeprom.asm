@@ -20,12 +20,6 @@ section .text
 ;     none
 ; ---------------------------------------------------------------------------
 readEEPROMData:
-push ax
-push es
-
-mov ax,IDE_DEVICES_DATA_SEGMENT
-mov es,ax
-
 	cld
 
 	mov si,IDE_DEVICES_STORED_DATA
@@ -42,9 +36,6 @@ mov es,ax
 
 	dec bl
 	jnz .readData
-
-pop es
-pop ax
 
 	ret
 
