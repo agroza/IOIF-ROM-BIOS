@@ -17,7 +17,7 @@ My goals would be to keep the compiled code fit within a 28C64 (64 Kbit / 8 KB) 
 PS: I was once skilled in assembly language and I used TASM and TLINK on a daily basis. But I haven't touched assembly since at least 2005. That makes it about 15 years. So I expect this project will evolve slowly as I remember all the tricks I once knew.
 
 ### Notes
-* At the moment this is a work in progress so the compiled ROM mirocode is ~~pretty much useless~~ barely usable.
+* At the moment this is a work in progress so the compiled ROM mirocode is ~~pretty much useless~~ becoming to be usable.
 * In order to compile the ROM binary file, you need ```nasm.exe``` and ```romcksum.exe``` to be present in the .\bin subdirectory.
 * Optionally you also need ```sclc.exe``` in the .\bin subdirectory.
 * Build the project by launching ```_build.bat```.
@@ -43,3 +43,4 @@ Needless to say that all of these programs require Windows to run.
 * I am performing most of the superficial tests using QEMU. But I am having real difficulties identifying hard disks in the emulator.
 * The real tests are performed on real hardware. The machine is equipped with an 80386DX processor running at 33 MHz. Also it has a LAN card, and dual Compact Flash cards in master/slave configuration on the Primary IDE controller.
 * Testing is basically done in no time since I have written a batch script that assembles the ROM in such way that it can be executed directly from MS-DOS. This script also copies the compiled ROM file to a network share drive which is targeted by the 80386 machine. Thus I can go from compilation to real testing in less than 5 seconds.
+* The final tests are performed using a real ATMEL 28C64B EEPROM IC, programmed with the flat binary image, on my TL866II Plus Universal Programmer. I am inserting this ROM in the OPTION ROM (IC2) socket on my DIY [16-bit ATX ISA Backplane](http://www.alexandrugroza.ro/microelectronics/isa-backplane/index.html). The address at which this ROM is loaded is 0xD0000, configured via SW1.3-SW1.7 switches. EEPROM access (SW1.1) is activated and writing (SW1.2) is enabled.
