@@ -178,6 +178,7 @@ identifyIDEDevice:
 	add dx,ALTERNATE_STATUS_REGISTER
 
 	mov cl,3
+
 .nextRead:
 	in al,dx				; takes 100ns
 	dec cl
@@ -201,6 +202,7 @@ identifyIDEDevice:
 	cmp ax,bx				; same timer count?
 	je .waitBSY
 	mov bx,ax				; store the new compare value
+
 	loop .waitBSY				; continue until time-out
 
 	jmp .clearATAIdentifyDeviceData		; time-out, assume error
@@ -223,6 +225,7 @@ identifyIDEDevice:
 	cmp ax,bx				; same timer count?
 	je .waitDRDY
 	mov bx,ax				; store the new compare value
+
 	loop .waitDRDY				; continue until time-out
 
 	jmp .clearATAIdentifyDeviceData		; time-out, assume error

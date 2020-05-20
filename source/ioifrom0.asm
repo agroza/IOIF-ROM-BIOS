@@ -110,21 +110,32 @@ start:
 
 	mov ah,01h				; read the state of the keyboard buffer
 	int 16h
-	jz .autodetectIDEDevices
+	jz .skipSetup
 
 	mov ah,00h				; read key press
 	int 16h
 
 	cmp ax,KEYBOARD_DEL
-	jne .autodetectIDEDevices
+	jne .skipSetup
 
 	call enterSetup
+
+	jmp .autodetectIDEDevices
+
+.skipSetup:
+	mov ah,COLOR_BLACK
+	sub dh,2				; point to the 'Press DEL...' message
+	mov cx,MSG_PRESS_DEL_KEY_LENGTH
+	call highlightRegion
+
+	call moveCursor
 
 .autodetectIDEDevices:
 	mov bx,sIDEDevicePM			; first IDE Device string: Primary Master string
 	mov si,IDE_INTERFACES_DEVICE		; first IDE Interface: Primary Master (Device 0)
 
 	mov cx,IDE_DEVICES_DATA_DEVICES_COUNT
+
 .nextIDEDevice:
 	call autodetectIDEDevice
 

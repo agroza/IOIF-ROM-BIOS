@@ -151,13 +151,13 @@ programEEPROMCode:
 .writeData:
 	es mov byte [di],al
 
-	xor bx,bx				; wait cycle time counter (2 - 10 ms)
+	xor bx,bx				; wait cycle time counter (Twc = 2 - 10 ms)
 
 .writeCycleTime:
-	es cmp byte al,[di]
-	je .nextDataByte
+	es cmp byte al,[di]			; but if the byte is written faster
+	je .nextDataByte			; then just move along
 
-	dec bx
+	dec bx					; otherwise continue wasting time
 
 	jnz .writeCycleTime
 

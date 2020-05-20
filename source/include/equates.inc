@@ -14,6 +14,13 @@ ROMSTART					EQU	0000h
 ROMSIZE						EQU	2000h	; bytes
 ROMBLOCKS					EQU	ROMSIZE / 512
 
+; ROM: Data/Extra Segments Constants
+; ---------------------------------------------------------------------------
+; TODO : Find better RAM addresses for these extra segments.
+IDE_DEVICES_DATA_SEGMENT			EQU	07C0h
+PROGRAM_EEPROM_CODE_SEGMENT			EQU	97C0h
+PROGRAM_EEPROM_CODE_OFFSET			EQU	0000h
+
 ; System: Video BIOS Constants
 ; ---------------------------------------------------------------------------
 VIDEO_RAM_SEGMENT				EQU	0B800h
@@ -75,6 +82,7 @@ IDE_FEATURE_POSSIBLE				EQU	(COLOR_BLUE << 4) + COLOR_LIGHTYELLOW
 
 ; Text-Mode User Interface: Messages (Strings) Constants
 ; ---------------------------------------------------------------------------
+MSG_PRESS_DEL_KEY_LENGTH			EQU	33
 MSG_IDE_DEVICE_LENGTH				EQU	20
 MSG_IDE_DEVICE_TYPE_LENGTH			EQU	5
 
@@ -257,11 +265,6 @@ IDE_DEVICES_SECONDARY_SLAVE_ID			EQU	3
 IDE_DEVICES_TYPE_AUTO				EQU	0
 IDE_DEVICES_TYPE_USER				EQU	1
 IDE_DEVICES_TYPE_NONE				EQU	2
-
-; TODO : Find better RAM addresses for these extra segments.
-IDE_DEVICES_DATA_SEGMENT			EQU	07C0h
-PROGRAM_EEPROM_CODE_SEGMENT			EQU	97C0h
-PROGRAM_EEPROM_CODE_OFFSET			EQU	0000h
 
 IDE_DEVICES_STORED_DATA_SIZE			EQU	11	; bytes
 IDE_DEVICES_DATA_SIZE				EQU	89	; bytes
