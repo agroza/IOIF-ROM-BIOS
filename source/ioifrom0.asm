@@ -10,6 +10,8 @@
 %define ROM
 ;%define DOS
 
+;%define HOOKINT13h
+
 ;%define USETESTDATA
 
 	use16
@@ -42,7 +44,7 @@ section .text
 %include ".\source\eeprom.asm"
 %include ".\source\detect.asm"
 %include ".\source\setup.asm"
-;%include ".\source\interrupts.asm"
+%include ".\source\interrupts.asm"
 %include ".\source\include\data.inc"
 %include ".\source\include\messages.inc"
 
@@ -124,7 +126,7 @@ start:
 
 .skipSetup:
 	mov ah,COLOR_BLACK
-	sub dh,2				; point to the 'Press DEL...' message
+	sub dh,2				; point to the 'Press DEL...' message on screen
 	mov cx,MSG_PRESS_DEL_KEY_LENGTH
 	call highlightRegion
 
@@ -147,6 +149,9 @@ start:
 .exit:
 	call CRLF
 
+%ifdef HOOKINT13h
+	call hookINT13h
+%endif
 	pop sp
 	pop bp
 	pop es

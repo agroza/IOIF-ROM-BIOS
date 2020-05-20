@@ -237,7 +237,7 @@ ATA_ID_DEV_FEATURE_IORDY_DISABLE_FLAG		EQU	1 << 2
 ATA_ID_DEV_FEATURE_LBA_FLAG			EQU	1 << 1
 ATA_ID_DEV_FEATURE_DMA_FLAG			EQU	1 << 0
 
-; I/OIF ROM BIOS: IDE Interface Base Addresses
+; I/O-IF ROM BIOS: IDE Interface Base Addresses
 ; ---------------------------------------------------------------------------
 PRIMARY_IDE_INTERFACE				EQU	01F0h	; 0x1F0h - 0x1F7h
 PRIMARY_IDE_INTERFACE_CONTROL			EQU	03F0h	; 0x3F6h - 0x3F7h
@@ -250,12 +250,12 @@ IDE_INTERFACE_BASE_ADDRESS			EQU	0	; word
 IDE_INTERFACE_CONTROL_ADDRESS			EQU	2	; word
 IDE_INTERFACE_DEVICE				EQU	4	; word (Master/Slave|ID)
 
-; I/OIF ROM BIOS: IDE Master/Slave Identifiers
+; I/O-IF ROM BIOS: IDE Master/Slave Identifiers
 ; ---------------------------------------------------------------------------
 IDE_MASTER_DEVICE				EQU	00h
 IDE_SLAVE_DEVICE				EQU	10h
 
-; I/OIF ROM BIOS: IDE Devices Data Matrix Equates and Offsets
+; I/O-IF ROM BIOS: IDE Devices Data Matrix Equates and Offsets
 ; ---------------------------------------------------------------------------
 IDE_DEVICES_PRIMARY_MASTER_ID			EQU	0
 IDE_DEVICES_PRIMARY_SLAVE_ID			EQU	1
@@ -286,7 +286,7 @@ IDE_DEVICES_DATA_IDENTIFIED_OFFSET		EQU	88
 
 IDE_DEVICES_DATA_IDENTIFIED			EQU	0
 
-; I/OIF ROM BIOS: IDE Devices Parameters Restrictions
+; I/O-IF ROM BIOS: IDE Devices Parameters Restrictions
 ; ---------------------------------------------------------------------------
 IDE_PARAMETER_RESTRICTION_MIN_OFFSET		EQU	0
 IDE_PARAMETER_RESTRICTION_MAX_OFFSET		EQU	2
@@ -301,3 +301,9 @@ IDE_PARAMETER_CHS_WPCOMP_MIN			EQU	1
 IDE_PARAMETER_CHS_WPCOMP_MAX			EQU	65535
 IDE_PARAMETER_CHS_LDZONE_MIN			EQU	1
 IDE_PARAMETER_CHS_LDZONE_MAX			EQU	1023
+
+; I/O-IF ROM BIOS: Interrupts
+; ---------------------------------------------------------------------------
+; TODO : Find a location where to store original INT13h.
+INTERRUPT_ORIGINAL_INT13h			EQU	00h * 4
+INTERRUPT_NEW_INT13h				EQU	13h * 4
