@@ -100,6 +100,54 @@ section .text
 		TIMES (IDE_DEVICES_STORED_DATA_SIZE * IDE_DEVICES_DATA_DEVICES_COUNT) DB 00h
 %endif
 
+	; INT13H_SERVICE_BRANCH_TABLE is a ROM storage R array, containing the address
+	; of each INT 13h service routine, each row being structured as:
+	;     Offset:  0 :  1 word  - Interrupt 13h Service 00h (Reset Disk System)
+	;     Offset:  2 :  1 word  - Interrupt 13h Service 01h (Get Status of Last Drive Operation)
+	;     Offset:  4 :  1 word  - Interrupt 13h Service 02h (Read Sectors From Drive)
+	;     Offset:  6 :  1 word  - Interrupt 13h Service 03h (Write Sectors To Drive)
+	;     Offset:  8 :  1 word  - Interrupt 13h Service 04h (Verify Sectors From Drive)
+	;     Offset: 10 :  1 word  - Interrupt 13h Service 05h (No Service)
+	;     Offset: 12 :  1 word  - Interrupt 13h Service 06h (No Service)
+	;     Offset: 14 :  1 word  - Interrupt 13h Service 07h (No Service)
+	;     Offset: 16 :  1 word  - Interrupt 13h Service 08h (Read Drive Parameters)
+	;     Offset: 18 :  1 word  - Interrupt 13h Service 09h (Initialize Drive Controller)
+	;     Offset: 20 :  1 word  - Interrupt 13h Service 0Ah (No Service)
+	;     Offset: 22 :  1 word  - Interrupt 13h Service 0Bh (No Service)
+	;     Offset: 24 :  1 word  - Interrupt 13h Service 0Ch (Move Drive Head To Cylinder)
+	;     Offset: 26 :  1 word  - Interrupt 13h Service 0Dh (Reset Disk Drives)
+	;     Offset: 28 :  1 word  - Interrupt 13h Service 0Eh (No Service)
+	;     Offset: 30 :  1 word  - Interrupt 13h Service 0Fh (No Service)
+	;     Offset: 32 :  1 word  - Interrupt 13h Service 10h (Test Whether Drive Is Ready)
+	;     Offset: 34 :  1 word  - Interrupt 13h Service 11h (Recalibrate Drive)
+	;     Offset: 36 :  1 word  - Interrupt 13h Service 12h (No Service)
+	;     Offset: 38 :  1 word  - Interrupt 13h Service 13h (No Service)
+	;     Offset: 40 :  1 word  - Interrupt 13h Service 14h (Controller Diagnostics)
+	;     Offset: 42 :  1 word  - Interrupt 13h Service 15h (Read Drive Type)
+	INT13H_SERVICE_BRANCH_TABLE:
+		DW	interrupt13hService00h
+		DW	interrupt13hService01h
+		DW	interrupt13hService02h
+		DW	interrupt13hService03h
+		DW	interrupt13hService04h
+		DW	interrupt13hNoService
+		DW	interrupt13hNoService
+		DW	interrupt13hNoService
+		DW	interrupt13hService08h
+		DW	interrupt13hService09h
+		DW	interrupt13hNoService
+		DW	interrupt13hNoService
+		DW	interrupt13hService0Ch
+		DW	interrupt13hService0Dh
+		DW	interrupt13hNoService
+		DW	interrupt13hNoService
+		DW	interrupt13hService10h
+		DW	interrupt13hService11h
+		DW	interrupt13hNoService
+		DW	interrupt13hNoService
+		DW	interrupt13hService14h
+		DW	interrupt13hService15h
+
 section .bss
 
 	; 512-byte memory buffer used to store the ATA Identify Command results.

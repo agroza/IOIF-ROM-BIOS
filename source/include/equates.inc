@@ -304,6 +304,6 @@ IDE_PARAMETER_CHS_LDZONE_MAX			EQU	1023
 
 ; I/O-IF ROM BIOS: Interrupts
 ; ---------------------------------------------------------------------------
-; TODO : Find a location where to store original INT13h.
-INTERRUPT_ORIGINAL_INT13h			EQU	00h * 4
-INTERRUPT_NEW_INT13h				EQU	13h * 4
+; TODO : Find a location where to store original INT 13h.
+INTERRUPT_ORIGINAL_INT13H			EQU	00h * 4
+INTERRUPT_NEW_INT13H				EQU	13h * 4

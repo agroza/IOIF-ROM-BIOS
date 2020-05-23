@@ -11,7 +11,6 @@
 ;%define DOS
 
 ;%define HOOKINT13h
-
 ;%define USETESTDATA
 
 	use16
@@ -150,7 +149,7 @@ start:
 	call CRLF
 
 %ifdef HOOKINT13h
-	call hookINT13h
+	call interrupt13hHook
 %endif
 	pop sp
 	pop bp

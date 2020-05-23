@@ -11,7 +11,7 @@ section .text
 
 ; Hooks the original System BIOS Interrupt 13h ISR and installs the new one.
 ; Input:
-;     DL - drive
+;     none
 ; Output
 ;     none
 ; Affects:
@@ -19,62 +19,51 @@ section .text
 ; Preserves:
 ;     FLAGS
 ; ---------------------------------------------------------------------------
-hookINT13h:
+interrupt13hHook:
 	; TODO : Add code.
 
 	ret
 
-; I/O Interface ROM BIOS Interrupt 13h Handler and Service Routines.
+; I/O Interface ROM BIOS Interrupt 13h Handler.
 ; Input:
+;     AH - interrupt service routine
 ;     DL - drive
 ; Output
 ;     none
 ; Affects:
-;     none
+;     BX
 ; Preserves:
 ;     FLAGS
 ; ---------------------------------------------------------------------------
-isrINT13h:
+interrupt13hHandler:
 	pushf
 
-	cmp dl,80h
-	je .selectINT13Service
+	cmp dl,80h				; only 4 hard disk drives
+	jb .otherDeviceOrNoService
+	cmp dl,83h
+	ja .otherDeviceOrNoService
+
+.interrupt13hService:
+	xor bh,bh				; ignore high byte
+	mov bl,ah				; copy service memory address to bx
+	shl bx,1				; multiply by word size
+
+	cmp ah,15h
+	ja .otherDeviceOrNoService
+
+	cs call [bx + INT13H_SERVICE_BRANCH_TABLE]
 
 	popf
 
-	int INTERRUPT_ORIGINAL_INT13h
-
-	iret
-
-.selectINT13Service:
-	cmp ah,00h
-	je .serviceINT13h00h
-	cmp ah,01h
-	je .serviceINT13h01h
-	cmp ah,02h
-	je .serviceINT13h02h
-	cmp ah,03h
-	je .serviceINT13h03h
-	cmp ah,04h
-	je .serviceINT13h04h
-	cmp ah,08h
-	je .serviceINT13h08h
-	cmp ah,09h
-	je .serviceINT13h09h
-	cmp ah,0Ch
-	je .serviceINT13h0Ch
-	cmp ah,0Dh
-	je .serviceINT13h0Dh
-	cmp ah,10h
-	je .serviceINT13h10h
-	cmp ah,11h
-	je .serviceINT13h11h
-	cmp ah,14h
-	je .serviceINT13h14h
-	cmp ah,15h
-	je .serviceINT13h15h
-
 	jmp .exit
+
+.otherDeviceOrNoService:
+	popf
+
+	call interrupt13hNoService
+
+.exit:
+	iret
 
 ; I/O Interface ROM BIOS Interrupt 13h Service Routine 00h (Reset Disk System)
 ; Hardware: Floppy Disk Drive, Hard Disk Drive
@@ -89,12 +78,12 @@ isrINT13h:
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
-.serviceINT13h00h:
+interrupt13hService00h:
 	; TODO : Add code.
 
-	jmp .exit
+	ret
 
-; I/O Interface ROM BIOS Interrupt 13h Service Routine 01h (Get Status of Last Drive Operation)
+; I/O Interface ROM BIOS Interrupt 13h Service 01h (Get Status of Last Drive Operation)
 ; Hardware: Floppy Disk Drive, Hard Disk Drive
 ; Input:
 ;     DL - drive
@@ -107,12 +96,12 @@ isrINT13h:
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
-.serviceINT13h01h:
+interrupt13hService01h:
 	; TODO : Add code.
 
-	jmp .exit
+	ret
 
-; I/O Interface ROM BIOS Interrupt 13h Service Routine 02h (Read Sectors From Drive)
+; I/O Interface ROM BIOS Interrupt 13h Service 02h (Read Sectors From Drive)
 ; Hardware: Floppy Disk Drive, Hard Disk Drive
 ; Input:
 ;     AL - sectors to read count
@@ -131,12 +120,12 @@ isrINT13h:
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
-.serviceINT13h02h:
+interrupt13hService02h:
 	; TODO : Add code.
 
-	jmp .exit
+	ret
 
-; I/O Interface ROM BIOS Interrupt 13h Service Routine 03h (Write Sectors To Drive)
+; I/O Interface ROM BIOS Interrupt 13h Service 03h (Write Sectors To Drive)
 ; Hardware: Floppy Disk Drive, Hard Disk Drive
 ; Input:
 ;     AL - sectors to write count
@@ -155,12 +144,12 @@ isrINT13h:
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
-.serviceINT13h03h:
+interrupt13hService03h:
 	; TODO : Add code.
 
-	jmp .exit
+	ret
 
-; I/O Interface ROM BIOS Interrupt 13h Service Routine 04h (Verify Sectors From Drive)
+; I/O Interface ROM BIOS Interrupt 13h Service 04h (Verify Sectors From Drive)
 ; Hardware: Floppy Disk Drive, Hard Disk Drive
 ; Input:
 ;     AL - sectors to verify count
@@ -179,12 +168,12 @@ isrINT13h:
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
-.serviceINT13h04h:
+interrupt13hService04h:
 	; TODO : Add code.
 
-	jmp .exit
+	ret
 
-; I/O Interface ROM BIOS Interrupt 13h Service Routine 08h (Read Drive Parameters)
+; I/O Interface ROM BIOS Interrupt 13h Service 08h (Read Drive Parameters)
 ; Hardware: Floppy Disk Drive, Hard Disk Drive
 ; Input:
 ;     DL - drive (bit 7 set = reset FD and HD)
@@ -202,12 +191,12 @@ isrINT13h:
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
-.serviceINT13h08h:
+interrupt13hService08h:
 	; TODO : Add code.
 
-	jmp .exit
+	ret
 
-; I/O Interface ROM BIOS Interrupt 13h Service Routine 09h (Initialize Drive Controller)
+; I/O Interface ROM BIOS Interrupt 13h Service 09h (Initialize Drive Controller)
 ; Hardware: Hard Disk Drive
 ; Input:
 ;     DL - drive (bit 7 set = reset FD and HD)
@@ -220,12 +209,12 @@ isrINT13h:
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
-.serviceINT13h09h:
+interrupt13hService09h:
 	; TODO : Add code.
 
-	jmp .exit
+	ret
 
-; I/O Interface ROM BIOS Interrupt 13h Service Routine 0Ch (Move Drive Head To Cylinder)
+; I/O Interface ROM BIOS Interrupt 13h Service 0Ch (Move Drive Head To Cylinder)
 ; Hardware: Hard Disk Drive
 ; Input:
 ;     CH - track / cylinder (bits 7-0 = cylinder)
@@ -241,12 +230,12 @@ isrINT13h:
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
-.serviceINT13h0Ch:
+interrupt13hService0Ch:
 	; TODO : Add code.
 
-	jmp .exit
+	ret
 
-; I/O Interface ROM BIOS Interrupt 13h Service Routine 0Dh (Reset Disk Drives)
+; I/O Interface ROM BIOS Interrupt 13h Service 0Dh (Reset Disk Drives)
 ; Hardware: Hard Disk Drive
 ; Input:
 ;     DL - drive
@@ -259,12 +248,12 @@ isrINT13h:
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
-.serviceINT13h0Dh:
+interrupt13hService0Dh:
 	; TODO : Add code.
 
-	jmp .exit
+	ret
 
-; I/O Interface ROM BIOS Interrupt 13h Service Routine 10h (Test Whether Drive Is Ready)
+; I/O Interface ROM BIOS Interrupt 13h Service 10h (Test Whether Drive Is Ready)
 ; Hardware: Hard Disk Drive
 ; Input:
 ;     DL - drive
@@ -277,12 +266,12 @@ isrINT13h:
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
-.serviceINT13h10h:
+interrupt13hService10h:
 	; TODO : Add code.
 
-	jmp .exit
+	ret
 
-; I/O Interface ROM BIOS Interrupt 13h Service Routine 11h (Recalibrate Drive)
+; I/O Interface ROM BIOS Interrupt 13h Service 11h (Recalibrate Drive)
 ; Hardware: Hard Disk Drive
 ; Input:
 ;     DL - drive
@@ -295,12 +284,12 @@ isrINT13h:
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
-.serviceINT13h11h:
+interrupt13hService11h:
 	; TODO : Add code.
 
-	jmp .exit
+	ret
 
-; I/O Interface ROM BIOS Interrupt 13h Service Routine 14h (Controller Diagnostics)
+; I/O Interface ROM BIOS Interrupt 13h Service 14h (Controller Diagnostics)
 ; Hardware: Hard Disk Drive
 ; Input:
 ;     none
@@ -313,12 +302,12 @@ isrINT13h:
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
-.serviceINT13h14h:
+interrupt13hService14h:
 	; TODO : Add code.
 
-	jmp .exit
+	ret
 
-; I/O Interface ROM BIOS Interrupt 13h Service Routine 15h (Read Drive Type)
+; I/O Interface ROM BIOS Interrupt 13h Service 15h (Read Drive Type)
 ; Hardware: Floppy Disk Drive, Hard Disk Drive
 ; Input:
 ;     DL - drive
@@ -335,12 +324,23 @@ isrINT13h:
 ; Preserves:
 ;     none
 ; ---------------------------------------------------------------------------
-.serviceINT13h15h:
+interrupt13hService15h:
 	; TODO : Add code.
 
-	jmp .exit
+	ret
 
-.exit:
-	popf
+; I/O Interface ROM BIOS Interrupt 13h No Routine
+; Hardware: Floppy Disk Drive, Hard Disk Drive
+; Input:
+;     DL - drive
+; Output
+;     none
+; Affects:
+;     none
+; Preserves:
+;     none
+; ---------------------------------------------------------------------------
+interrupt13hNoService:
+	;int INTERRUPT_ORIGINAL_INT13H
 
-	iret
+	ret

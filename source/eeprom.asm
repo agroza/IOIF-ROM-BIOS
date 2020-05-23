@@ -146,7 +146,7 @@ programEEPROMCode:
 .enableSDPWrites:
 	es mov byte [1555h],0AAh		; this sequence is described
 	es mov byte [0AAAh],55h			; in the ATMEL 28C64B datasheet
-	es mov byte [1555h],0A0h		; at page 8 (REV. 0270H–12/99)
+	es mov byte [1555h],0A0h		; at page 8 (REV. 0270H-12/99)
 
 .writeData:
 	es mov byte [di],al
