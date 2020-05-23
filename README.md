@@ -14,14 +14,15 @@ When finished, this computer program will perform the following tasks:
 
 My goals would be to keep the compiled code fit within a 28C64 (64 Kbit / 8 KB) EEPROM integrated circuit. Should it extend over 8192 bytes, there is a second ROM socket on the printed circuit board assembly (PCBA). If I exceed 16 KB then I have also forseen this. By design, the I/O Interface accepts 28C256 EEPROMs as well. As simple as flipping of one or two jumpers.
 
-PS: I was once skilled in assembly language and I used TASM and TLINK on a daily basis. But I haven't touched assembly since at least 2005. That makes it about 15 years. So I expect this project will evolve slowly as I remember all the tricks I once knew.
+PS: I was once skilled in assembly language and I used TASM and TLINK on a daily basis. But I haven't touched assembly since at least 2005. As of 2020, that makes it about 15 years. So I expect this project will evolve slowly as I remember all the tricks I once knew.\
+Later Edit: One month deep into the code and I am becoming very confortable with assembly. And I even feel the same joy that I felt back in the '90s. After all, I'm writing a computer program out of nothing. And it will run on my DIY hardware. I mean, what more could I possibly want?
 
 ### Notes
 * At the moment this is a work in progress so the compiled ROM mirocode is ~~pretty much useless~~ becoming to be usable.
-* In order to compile the ROM binary file, you need ```nasm.exe``` and ```romcksum.exe``` to be present in the .\bin subdirectory.
-* Optionally you also need ```sclc.exe``` in the .\bin subdirectory.
+* In order to compile the ROM binary file, you need ```nasm.exe``` and ```romcksum.exe``` to be present in the ```.\bin``` subdirectory.
+* Optionally you also need ```sclc.exe``` in the ```.\bin``` subdirectory.
 * Build the project by launching ```_build.bat```.
-* The compiled ROM file will be generated in the .\output subdirectory.
+* The compiled ROM file will be generated in the ```.\output``` subdirectory.
 
 ### Coding Conventions:
 * Technically, the I/O Interface ISA card could work with 8-bit machines. But by design, the IDE interfaces are hard-wired for 16-bit ISA slots. That is why I use an 8-bit CPU detection mechanism to enable or disable the ROM BIOS.
@@ -37,7 +38,7 @@ PS: I was once skilled in assembly language and I used TASM and TLINK on a daily
 3. [ROM Checksum Calculator](https://github.com/agroza/romcksum)
 4. [EEPROM Read/Write](https://github.com/agroza/eepromrw) (I am only using this MS-DOS tool occasionally)
 
-Besides NASM and EEPROMRW, I have uploaded the other executable files in the .\bin subdirectory.
+Besides NASM and EEPROMRW, I have uploaded the other executable files in the ```.\bin``` subdirectory.
 Needless to say that all of these programs require Windows to run.
 
 ### Testing Environment
