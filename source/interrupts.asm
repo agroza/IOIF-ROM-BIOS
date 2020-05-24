@@ -22,10 +22,22 @@ section .text
 ;     none
 ; ---------------------------------------------------------------------------
 interrupt13hSetErrorAndCode:
+	call verifyIDEDeviceExists
+	or al,al
+	jz .setError
+
 	mov ah,BIOS_DISK_NO_ERROR_ON_LAST_OPERATION
 
 	clc
 
+	jmp .exit
+
+.setError:
+	mov ah,BIOS_DISK_INVALID_COMMAND
+
+	stc
+
+.exit:
 	ret
 
 ; Hooks the original System BIOS Interrupt 13h ISR and installs the new one.
@@ -57,14 +69,14 @@ interrupt13hHook:
 interrupt13hHandler:
 	pushf
 
-	cmp dl,80h				; only 4 hard disk drives
+	cmp dl,IDE_DEVICES_FIRST_HARD_DRIVE	; skip floppy disk drives
 	jb .otherDeviceOrNoService
-	cmp dl,83h
+	cmp dl,IDE_DEVICES_FOURTH_HARD_DRIVE	; skip hard disk drives not attached to I/O Interface
 	ja .otherDeviceOrNoService
 
 .interrupt13hService:
 	xor bh,bh				; ignore high byte
-	mov bl,ah				; copy service memory address to bx
+	mov bl,ah				; copy service routine identifier to bx
 	shl bx,1				; multiply by word size
 
 	cmp ah,15h
@@ -209,18 +221,20 @@ interrupt13hService04h:
 ;     CL - logical last index of sectors (bits 7,6 = bits 9,8 of cylinder; bits 5-0 = sector)
 ;     ES:DI - address of hard disk parameters table
 ; Affects:
-;     none
+;     BL
 ; Preserves:
-;     none
+;     SI
 ; ---------------------------------------------------------------------------
 interrupt13hService08h:
-	pusha
+	push si
 
-	mov di,IDE_DEVICES_DATA
+	call interrupt13hSetErrorAndCode
 
-	es mov word cx,[di + IDE_DEVICES_DATA_CYLINDERS_OFFSET]
-	es mov byte dh,[di + IDE_DEVICES_DATA_HEADS_OFFSET]
-	es mov byte dl,[di + IDE_DEVICES_DATA_SECTORS_OFFSET]
+	call loadIDEDevicesStoredData
+
+	ds mov word cx,[si + IDE_DEVICES_DATA_CYLINDERS_OFFSET]
+	ds mov byte dh,[si + IDE_DEVICES_DATA_HEADS_OFFSET]
+	ds mov byte dl,[si + IDE_DEVICES_DATA_SECTORS_OFFSET]
 
 	dec cx					; logical last index of tracks / cylinders (cylinders - 1)
 	dec dh					; logical last index of heads (heads - 1)
@@ -229,11 +243,9 @@ interrupt13hService08h:
 	ror cl,2				; tracks / cylinders (bits 7,6 = bits 9,8 of cylinder)
 	or cl,dl				; sectors (bits 5-0 = sector)
 
-	call interrupt13hSetErrorAndCode
-
 	call primaryInterfaceIDEDevicesCount
 
-	popa
+	pop si
 
 	ret
 

@@ -92,31 +92,84 @@ calculateIDEDevicesDataOffset:
 
 ; Returns the position within IDE_DEVICES_STORED_DATA, based on the given Device ID.
 ; Input:
-;     SI - pointer to IDE_INTERFACE_DEVICE array
+;     BL - IDE Device ID
 ; Output:
 ;     AX - position within IDE_DEVICES_STORED_DATA
 ; Affects:
 ;     FLAGS
 ; Preserves:
-;     BX, DX
+;     DX
 ; ---------------------------------------------------------------------------
 calculateIDEDevicesStoredDataOffset:
-	push bx
 	push dx
 
 	xor ah,ah
 	mov ax,IDE_DEVICES_STORED_DATA_SIZE
 	xor bh,bh
-	mov byte bl,[si + IDE_INTERFACE_DEVICE + 1]
 	mul bx
 	add ax,IDE_DEVICES_STORED_DATA
 
 	pop dx
-	pop bx
 
 	ret
 
-; Returns the number of hard disk drives installed on primary controller.
+; Loads SI with the position within IDE_DEVICES_STORED_DATA, based on the given drive.
+; Input:
+;     DL - drive
+; Output:
+;     SI - position within IDE_DEVICES_STORED_DATA
+; Affects:
+;     BL
+; Preserves:
+;     AX
+; ---------------------------------------------------------------------------
+loadIDEDevicesStoredData:
+	push ax
+
+	mov bl,dl
+	sub bl,IDE_DEVICES_FIRST_HARD_DRIVE
+	call calculateIDEDevicesStoredDataOffset
+	mov si,ax
+
+	pop ax
+
+	ret
+
+; Returns whether the given hard disk drive identifier points to an existing device.
+; Input:
+;     DL - drive
+; Output:
+;     AL - 0 = IDE Device does not exist, 1 = IDE Device does exist
+; Affects:
+;     FLAGS
+; Preserves:
+;     CX, SI
+; ---------------------------------------------------------------------------
+verifyIDEDeviceExists:
+	push si
+
+	xor al,al				; IDE Device does not exist
+
+	cmp dl,IDE_DEVICES_FIRST_HARD_DRIVE	; skip floppy disk drives
+	jb .exit
+	cmp dl,IDE_DEVICES_FOURTH_HARD_DRIVE	; skip hard disk drives not attached to I/O Interface
+	ja .exit
+
+	; TODO : In case of type = AUTO and no detection, this needs to be signalled.
+
+	call loadIDEDevicesStoredData
+
+	ds cmp byte [si + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_USER
+	jne .exit
+
+	inc al					; IDE Device does exist
+
+.exit:
+	pop si
+
+	ret
+
+; Returns the number of hard disk drives installed on primary interface.
 ; Input:
 ;     none
 ; Output:
@@ -124,32 +177,27 @@ calculateIDEDevicesStoredDataOffset:
 ; Affects:
 ;     FLAGS
 ; Preserves:
-;     CX, SI
+;     CX
 ; ---------------------------------------------------------------------------
 primaryInterfaceIDEDevicesCount:
-	push si
 	push cx
 
-	xor dl,dl
-
-	mov si,IDE_DEVICES_DATA
+	mov dl,IDE_DEVICES_FIRST_HARD_DRIVE
 
 	mov cx,IDE_DEVICES_PER_INTERFACE
 
 .nextDevice:
-	; TODO : In case of type = AUTO and no detection, this needs to be signalled.
-
-	es cmp byte [si + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_USER
-	jne .noDevice
+	call verifyIDEDeviceExists
+	or al,al
+	jz .noDevice
 
 	inc dl
 
 .noDevice:
-	add si,IDE_DEVICES_DATA_SIZE
-
 	loop .nextDevice
 
-	pop si
+	sub dl,IDE_DEVICES_FIRST_HARD_DRIVE
+
 	pop cx
 
 	ret
@@ -181,7 +229,7 @@ copyWordsExchangeBytes:
 
 	ret
 
-; Identification of an IDE device.
+; Identification of an IDE Device.
 ; Input:
 ;     SI - pointer to IDE_INTERFACE_DEVICE array
 ; Output:
@@ -379,7 +427,7 @@ identifyIDEDevice:
 
 	ret
 
-; Autodetection of an IDE device.
+; Autodetection of an IDE Device.
 ; Input:
 ;     BX - pointer to string; current IDE Device (Primary/Secondary; Master/Slave)
 ;     SI - pointer to IDE_INTERFACE_DEVICE array
@@ -396,9 +444,15 @@ autodetectIDEDevice:
 	push si
 	push ds
 
+	push bx
+
+	mov byte bl,[si + IDE_INTERFACE_DEVICE + 1]
 	call calculateIDEDevicesStoredDataOffset
 	mov di,ax
-	cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_AUTO
+
+	pop bx
+
+	ds cmp byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_AUTO
 	jne .exit
 
 	push si					; save pointer to IDE_INTERFACE_DEVICE
@@ -411,7 +465,7 @@ autodetectIDEDevice:
 
 	pop si					; restore pointer to IDE_INTERFACE_DEVICE
 
-	mov bl,[si + IDE_INTERFACE_DEVICE + 1]	; get device ID
+	mov bl,[si + IDE_INTERFACE_DEVICE + 1]
 	call calculateIDEDevicesDataOffset
 
 	push ax					; save IDE_DEVICES_DATA offset

@@ -250,15 +250,20 @@ IDE_INTERFACE_BASE_ADDRESS			EQU	0	; word
 IDE_INTERFACE_CONTROL_ADDRESS			EQU	2	; word
 IDE_INTERFACE_DEVICE				EQU	4	; word (Master/Slave|ID)
 
-; I/O-IF ROM BIOS: IDE Master/Slave Identifiers
-; ---------------------------------------------------------------------------
-IDE_MASTER_DEVICE				EQU	00h
-IDE_SLAVE_DEVICE				EQU	10h
-
-; I/O-IF ROM BIOS: IDE Devices Data Matrix Equates and Offsets
+; I/O-IF ROM BIOS: IDE Devices Constants
 ; ---------------------------------------------------------------------------
 IDE_DEVICES_PER_INTERFACE			EQU	2
 
+IDE_DEVICES_FIRST_HARD_DRIVE			EQU	80h
+IDE_DEVICES_SECOND_HARD_DRIVE			EQU	81h
+IDE_DEVICES_THIRD_HARD_DRIVE			EQU	82h
+IDE_DEVICES_FOURTH_HARD_DRIVE			EQU	83h
+
+IDE_DEVICES_MASTER				EQU	00h
+IDE_DEVICES_SLAVE				EQU	10h
+
+; I/O-IF ROM BIOS: IDE Devices Data Matrix Equates and Offsets
+; ---------------------------------------------------------------------------
 IDE_DEVICES_PRIMARY_MASTER_ID			EQU	0
 IDE_DEVICES_PRIMARY_SLAVE_ID			EQU	1
 IDE_DEVICES_SECONDARY_MASTER_ID			EQU	2
@@ -312,6 +317,7 @@ INTERRUPT_NEW_INT13H				EQU	13h * 4
 
 ; I/O-IF ROM BIOS: Interrupt 13h BIOS Disk Error Codes
 ; ---------------------------------------------------------------------------
+; TODO : Remove unused error codes.
 BIOS_DISK_NO_ERROR_ON_LAST_OPERATION		EQU	00h
 BIOS_DISK_INVALID_COMMAND			EQU	01h
 BIOS_DISK_ADDRESS_MARK_NOT_FOUND		EQU	02h
