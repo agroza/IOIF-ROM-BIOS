@@ -171,7 +171,7 @@ section .text
 section .bss
 
 	; 512-byte memory buffer used to store the ATA Identify Command results.
-	ATA_IDENTIFY_DEVICE_DATA	RESW	256
+	ATA_IDENTIFY_DEVICE_DATA	RESW	ATA_IDENTIFY_DEVICE_DATA_SIZE
 
 	; IDE_DEVICES_DATA is loaded at segment described by IDE_DEVICES_DATA_SEGMENT equate.
 	; IDE_DEVICES_DATA is a 4 row memory storage R/W matrix, each row being structured as:

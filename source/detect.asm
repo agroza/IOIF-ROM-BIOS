@@ -135,7 +135,7 @@ loadIDEDevicesStoredData:
 
 	ret
 
-; Returns whether the given hard disk drive identifier points to an existing device.
+; Returns whether the given drive identifier points to an existing device.
 ; Input:
 ;     DL - drive
 ; Output:
@@ -233,133 +233,39 @@ copyWordsExchangeBytes:
 ; Input:
 ;     SI - pointer to IDE_INTERFACE_DEVICE array
 ; Output:
-;     AL - 0 = success; 1 = error
 ;     ATA_IDENTIFY_DEVICE_DATA - filled with data if sucess, zeroes if error
 ; Affects:
-;     FLAGS, AX, BX, CX
+;     FLAGS, AX, BX
 ; Preserves:
-;     DX, SI, DI, DS
+;     CX, DX, SI, DI, DS
 ; ---------------------------------------------------------------------------
 identifyIDEDevice:
-	push bp
-	mov bp,sp
-
-	push word [si + IDE_INTERFACE_BASE_ADDRESS]
-	push word [si + IDE_INTERFACE_CONTROL_ADDRESS]
-	push word [si + IDE_INTERFACE_DEVICE]
-
 	push cx
 	push dx
 	push si
 	push di
 	push ds
 
-	xor ax,ax
-	mov ds,ax				; DS:SI = 0000h:SI
-
 	cld
 
-.wait400ns:
-	mov dx,[bp - 4]				; IDE Interface Control Address
-	add dx,ALTERNATE_STATUS_REGISTER
+	mov di,ATA_IDENTIFY_DEVICE_DATA
+	mov cx,ATA_IDENTIFY_DEVICE_DATA_SIZE
 
-	mov cl,3
-
-.nextRead:
-	in al,dx				; takes 100ns
-	dec cl
-	jnz .nextRead
-
-.checkBSY:
-	mov dx,[bp - 2]				; IDE Interface Base Address
-	add dx,STATUS_REGISTER
-
-	mov ax,18				; 18 Hz
-	shl ax,1				; multiply by 2 seconds
-	xchg ax,cx				; result in cx
-	mov bx,[46Ch]				; BIOS timer count is updated at 18.2 Hz
-
-.waitBSY:
-	in al,dx				; read
-	and al,STATUS_REGISTER_BSY
-	jz .checkDRDY
-
-	mov ax,[46Ch]				; BIOS timer count is updated at 18.2 Hz
-	cmp ax,bx				; same timer count?
-	je .waitBSY
-	mov bx,ax				; store the new compare value
-
-	loop .waitBSY				; continue until time-out
-
-	jmp .clearATAIdentifyDeviceData		; time-out, assume error
-
-.checkDRDY:
-	mov dx,[bp - 2]				; IDE Interface Base Address
-	add dx,STATUS_REGISTER
-
-	mov ax,18				; 18 Hz
-	shl ax,1				; multiply by 2 seconds
-	xchg ax,cx				; result in cx
-	mov bx,[46Ch]				; BIOS timer count is updated at 18.2 Hz
-
-.waitDRDY:
-	in al,dx				; read
-	and al,STATUS_REGISTER_DRDY
-	jnz .sendIdentifyCommand
-
-	mov ax,[46Ch]				; BIOS timer count is updated at 18.2 Hz
-	cmp ax,bx				; same timer count?
-	je .waitDRDY
-	mov bx,ax				; store the new compare value
-
-	loop .waitDRDY				; continue until time-out
-
-	jmp .clearATAIdentifyDeviceData		; time-out, assume error
-
-.sendIdentifyCommand:
-	cli
-
-	mov dx,[bp - 2]				; IDE Interface Base Address
-	add dx,SELECT_DRIVE_AND_HEAD_REGISTER
-	mov al,[bp - 6]				; Device (Master/Slave)
-	out dx,al
-
-	mov dx,[bp - 2]				; IDE Interface Base Address
-	add dx,COMMAND_REGISTER
-	mov al,ATA_IDENTIFY_DEVICE_COMMAND
-	out dx,al
-
-.waitDRQ:
-	mov dx,[bp - 2]				; IDE Interface Base Address
-	add dx,STATUS_REGISTER
-
-.checkDRQ:
-	in al,dx
-	and al,STATUS_REGISTER_DRQ
-	jz .checkDRQ
-
-	mov dx,[bp - 2]				; IDE Interface Base Address
-	add dx,DATA_REGISTER
+	call sendATACommand
+	jc .clearATAIdentifyDeviceData
 
 .fillATAIdentifyDeviceData:
-	mov di,ATA_IDENTIFY_DEVICE_DATA
-	mov cx,256
-
 	rep insw				; fill the buffer with device data
-
-	sti
 
 	jmp .processATAIdentifyDeviceData
 
 .clearATAIdentifyDeviceData:
-	mov di,ATA_IDENTIFY_DEVICE_DATA
 	xor ax,ax
-	mov cx,256
 
-	rep stosw				; fill the buffer with device data
+	rep stosw				; fill the buffer with zeroes
 
 .processATAIdentifyDeviceData:
-	mov bl,[bp - 5]				; IDE Device ID
+	mov byte bl,[si + IDE_INTERFACE_DEVICE + 1]
 	call calculateIDEDevicesDataOffset
 
 	mov si,ATA_IDENTIFY_DEVICE_DATA
@@ -381,8 +287,10 @@ identifyIDEDevice:
 
 	or ax,ax				; no sectors?
 	jnz .copyWPCOMP
+
 	es mov byte [di + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_NONE
 	es mov word [di + IDE_DEVICES_DATA_WPCOMP_OFFSET],ax
+
 	jmp .copyGeneralAndFeatures
 
 .copyWPCOMP:
@@ -421,9 +329,6 @@ identifyIDEDevice:
 	pop si
 	pop dx
 	pop cx
-
-	mov sp,bp
-	pop bp
 
 	ret
 

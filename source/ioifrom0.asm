@@ -10,7 +10,7 @@
 %define ROM
 ;%define DOS
 
-%define HOOKINT13h
+;%define HOOKINT13h
 %define USETESTDATA
 
 	use16
@@ -41,8 +41,8 @@ section .text
 %include ".\source\routines.asm"
 ;%include ".\source\cmos.asm"
 %include ".\source\eeprom.asm"
-%include ".\source\idedevice.asm"
 %include ".\source\detect.asm"
+%include ".\source\idedevice.asm"
 %include ".\source\setup.asm"
 %include ".\source\interrupts.asm"
 %include ".\source\include\data.inc"
@@ -54,9 +54,9 @@ section .text
 ; Output:
 ;     none
 ; Affects:
-;     DI
+;     none
 ; Preserves:
-;     FLAGS, AX, BX, CX, DX, SI, DS, ES
+;     FLAGS, AX, BX, CX, DX, SI, DI, DS, ES, BP, SP
 ; ---------------------------------------------------------------------------
 start:
 	pushf

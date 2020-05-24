@@ -209,10 +209,17 @@ STATUS_REGISTER_ERR				EQU	1 << 0	; error
 
 ; ATA Standard: ATA Commands
 ; ---------------------------------------------------------------------------
-ATA_IDENTIFY_DEVICE_COMMAND			EQU	0ECh
+ATA_COMMAND_DEVICE_RESET			EQU	08h
+ATA_COMMAND_RECALIBRATE				EQU	10h
+ATA_COMMAND_READ_SECTORS			EQU	20h
+ATA_COMMAND_WRITE_SECTORS			EQU	30h
+ATA_COMMAND_VERIFY_SECTORS			EQU	40h
+ATA_COMMAND_IDENTIFY_DEVICE			EQU	0ECh
 
-; ATA Standard: ATA Identify Device Command Offsets
+; ATA Standard: ATA Identify Device Command Buffer Size, Offsets, and Lengths
 ; ---------------------------------------------------------------------------
+ATA_IDENTIFY_DEVICE_DATA_SIZE			EQU	256	; words
+
 ATA_IDENTIFY_DEVICE_GENERAL_OFFSET		EQU	0
 ATA_IDENTIFY_DEVICE_CYLINDERS_OFFSET		EQU	2
 ATA_IDENTIFY_DEVICE_HEADS_OFFSET		EQU	6

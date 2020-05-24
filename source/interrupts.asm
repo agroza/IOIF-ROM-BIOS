@@ -113,6 +113,9 @@ interrupt13hHandler:
 ;     none
 ; ---------------------------------------------------------------------------
 interrupt13hService00h:
+	mov ah,ATA_COMMAND_DEVICE_RESET
+	call sendATACommand
+
 	; TODO : Add code.
 
 	ret
@@ -155,7 +158,8 @@ interrupt13hService01h:
 ;     none
 ; ---------------------------------------------------------------------------
 interrupt13hService02h:
-	; TODO : Add code.
+	mov ah,ATA_COMMAND_READ_SECTORS
+	call accessIDEDevice
 
 	ret
 
@@ -179,7 +183,8 @@ interrupt13hService02h:
 ;     none
 ; ---------------------------------------------------------------------------
 interrupt13hService03h:
-	; TODO : Add code.
+	mov ah,ATA_COMMAND_WRITE_SECTORS
+	call accessIDEDevice
 
 	ret
 
@@ -203,7 +208,8 @@ interrupt13hService03h:
 ;     none
 ; ---------------------------------------------------------------------------
 interrupt13hService04h:
-	; TODO : Add code.
+	mov ah,ATA_COMMAND_VERIFY_SECTORS
+	call accessIDEDevice
 
 	ret
 
