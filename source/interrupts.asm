@@ -9,6 +9,25 @@
 
 section .text
 
+; Sets the appropriate BIOS Disk Error Code and value of the Carry FLag.
+; Input:
+;     DL - drive
+; Output:
+;     AH - BIOS Disk Error Code
+;     CF - clear = success
+;          set = error
+; Affects:
+;     none
+; Preserves:
+;     none
+; ---------------------------------------------------------------------------
+interrupt13hSetErrorAndCode:
+	mov ah,BIOS_DISK_NO_ERROR_ON_LAST_OPERATION
+
+	clc
+
+	ret
+
 ; Hooks the original System BIOS Interrupt 13h ISR and installs the new one.
 ; Input:
 ;     none
@@ -63,7 +82,10 @@ interrupt13hHandler:
 	call interrupt13hNoService
 
 .exit:
-	iret
+	; TODO : Replace ret with iret once the ISRs are ready to take over.
+
+	ret
+	;iret
 
 ; I/O Interface ROM BIOS Interrupt 13h Service Routine 00h (Reset Disk System)
 ; Hardware: Floppy Disk Drive, Hard Disk Drive
@@ -86,7 +108,7 @@ interrupt13hService00h:
 ; I/O Interface ROM BIOS Interrupt 13h Service 01h (Get Status of Last Drive Operation)
 ; Hardware: Floppy Disk Drive, Hard Disk Drive
 ; Input:
-;     DL - drive
+;     DL - drive (bit 7 set = reset FD and HD)
 ; Output
 ;     CF - clear = success
 ;          set = error
@@ -176,14 +198,14 @@ interrupt13hService04h:
 ; I/O Interface ROM BIOS Interrupt 13h Service 08h (Read Drive Parameters)
 ; Hardware: Floppy Disk Drive, Hard Disk Drive
 ; Input:
-;     DL - drive (bit 7 set = reset FD and HD)
+;     DL - drive
 ; Output
 ;     CF - clear = success
 ;          set = error
 ;     AH - BIOS Disk Error Code
 ;     DH - logical last index of heads (heads - 1)
-;     DL - number of hard disk drives
-;     CH - logical last index of track cylinders (cylinders - 1; bits 7-0 = cylinder)
+;     DL - number of hard disk drives on first interface
+;     CH - logical last index of tracks / cylinders (cylinders - 1; bits 7-0 = cylinder)
 ;     CL - logical last index of sectors (bits 7,6 = bits 9,8 of cylinder; bits 5-0 = sector)
 ;     ES:DI - address of hard disk parameters table
 ; Affects:
@@ -192,14 +214,33 @@ interrupt13hService04h:
 ;     none
 ; ---------------------------------------------------------------------------
 interrupt13hService08h:
-	; TODO : Add code.
+	pusha
+
+	mov di,IDE_DEVICES_DATA
+
+	es mov word cx,[di + IDE_DEVICES_DATA_CYLINDERS_OFFSET]
+	es mov byte dh,[di + IDE_DEVICES_DATA_HEADS_OFFSET]
+	es mov byte dl,[di + IDE_DEVICES_DATA_SECTORS_OFFSET]
+
+	dec cx					; logical last index of tracks / cylinders (cylinders - 1)
+	dec dh					; logical last index of heads (heads - 1)
+
+	xchg ch,cl				; tracks / cylinders (cylinders - 1; bits 7-0 = cylinder)
+	ror cl,2				; tracks / cylinders (bits 7,6 = bits 9,8 of cylinder)
+	or cl,dl				; sectors (bits 5-0 = sector)
+
+	call interrupt13hSetErrorAndCode
+
+	call primaryInterfaceIDEDevicesCount
+
+	popa
 
 	ret
 
 ; I/O Interface ROM BIOS Interrupt 13h Service 09h (Initialize Drive Controller)
 ; Hardware: Hard Disk Drive
 ; Input:
-;     DL - drive (bit 7 set = reset FD and HD)
+;     DL - drive
 ; Output
 ;     CF - clear = success
 ;          set = error

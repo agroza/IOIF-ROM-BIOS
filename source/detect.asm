@@ -116,6 +116,44 @@ calculateIDEDevicesStoredDataOffset:
 
 	ret
 
+; Returns the number of hard disk drives installed on primary controller.
+; Input:
+;     none
+; Output:
+;     DL - number of hard disk drives on first interface
+; Affects:
+;     FLAGS
+; Preserves:
+;     CX, SI
+; ---------------------------------------------------------------------------
+primaryInterfaceIDEDevicesCount:
+	push si
+	push cx
+
+	xor dl,dl
+
+	mov si,IDE_DEVICES_DATA
+
+	mov cx,IDE_DEVICES_PER_INTERFACE
+
+.nextDevice:
+	; TODO : In case of type = AUTO and no detection, this needs to be signalled.
+
+	es cmp byte [si + IDE_DEVICES_DATA_TYPE_OFFSET],IDE_DEVICES_TYPE_USER
+	jne .noDevice
+
+	inc dl
+
+.noDevice:
+	add si,IDE_DEVICES_DATA_SIZE
+
+	loop .nextDevice
+
+	pop si
+	pop cx
+
+	ret
+
 ; Copies a number of words from SI to DI. Exchanges high and low bytes. Writes null at the end.
 ; Input:
 ;     SI - source strig

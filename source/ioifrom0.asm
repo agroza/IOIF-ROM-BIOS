@@ -10,8 +10,8 @@
 %define ROM
 ;%define DOS
 
-;%define HOOKINT13h
-;%define USETESTDATA
+%define HOOKINT13h
+%define USETESTDATA
 
 	use16
 	cpu 286
@@ -41,6 +41,7 @@ section .text
 %include ".\source\routines.asm"
 ;%include ".\source\cmos.asm"
 %include ".\source\eeprom.asm"
+%include ".\source\idedevice.asm"
 %include ".\source\detect.asm"
 %include ".\source\setup.asm"
 %include ".\source\interrupts.asm"
@@ -149,7 +150,13 @@ start:
 	call CRLF
 
 %ifdef HOOKINT13h
-	call interrupt13hHook
+	;call interrupt13hHook
+
+	; TODO : Remove this simulation.
+
+	mov dl,80h
+	mov ah,08h
+	call interrupt13hHandler
 %endif
 	pop sp
 	pop bp
