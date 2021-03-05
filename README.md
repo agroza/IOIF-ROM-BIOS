@@ -1,4 +1,6 @@
-# IOIF-ROM-BIOS
+# I/O Interface ROM BIOS
+
+This project is also known as ```IOIF-ROM-BIOS```.
 
 ## Synopsis
 This repository contains the I/O Interface ROM BIOS source code for the software that will run on my DIY [ISA I/O Interface](http://www.alexandrugroza.ro/microelectronics/system-design/isa-io-interface/index.html) card that you can find on the [Microelectronics](http://www.alexandrugroza.ro/microelectronics/index.html) page on my site.
