@@ -20,7 +20,7 @@ PS: I was once skilled in assembly language and I used TASM and TLINK on a daily
 Later Edit: One month deep into the code and I am becoming very confortable with assembly. And I even feel the same joy that I felt back in the '90s. After all, I'm writing a computer program out of nothing. And it will run on my DIY hardware. I mean, what more could I possibly want?
 
 ### Notes
-* At the moment this is a work in progress so the compiled ROM mirocode is ~~pretty much useless~~ becoming to be usable.
+* At the moment this is a work in progress so the compiled ROM microcode is ~~pretty much useless~~ becoming to be usable.
 * In order to compile the ROM binary file, you need ```nasm.exe``` and ```romcksum.exe``` to be present in the ```.\bin``` subdirectory.
 * Optionally you also need ```sclc.exe``` in the ```.\bin``` subdirectory.
 * Build the project by launching ```_build.bat```.
